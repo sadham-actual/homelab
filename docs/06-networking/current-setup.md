@@ -176,31 +176,29 @@
 
 ## Network Diagram (Current)
 
-```
-Internet (Frontier 500Mbps)
-         |
-    Frontier ONT
-         |
-   Deco W7200 (Main)
-   [Router/DHCP/WiFi]
-   192.168.1.1
-         |
-    [Wireless Mesh]
-         |
-    +----+----+
-    |         |
-Deco S4   Deco W7200
-(Desk)    (Living Room)
-    |
-    | (wired)
-    |
-YuanLey 2.5Gb Switch
-[Unmanaged]
-    |
-    +---+---+---+
-    |   |   |   |
-  TrueNAS  Desktop  [Future: Proxmox]  [Available ports]
-  2.5GbE   2.5GbE   1GbE
+```mermaid
+graph TB
+    Internet[Internet<br/>Frontier 500Mbps]
+    ONT[Frontier ONT]
+    DecoMain["TP-Link Deco W7200<br/>Main Unit<br/>Router/DHCP/WiFi<br/>192.168.1.1"]
+    DecoS4["TP-Link Deco S4<br/>Desk Unit<br/>Mesh Node"]
+    DecoLR["TP-Link Deco W7200<br/>Living Room<br/>Mesh Node"]
+    Switch["YuanLey 2.5Gb Switch<br/>Unmanaged<br/>8x 2.5GbE + 2x 10Gb SFP"]
+    
+    TrueNAS["TrueNAS SCALE<br/>192.168.1.X<br/>2.5GbE"]
+    Desktop["Desktop PC<br/>192.168.1.X<br/>2.5GbE"]
+    ProxmoxFuture["Proxmox<br/>Future<br/>1GbE"]
+    Available["Available Ports<br/>5x 2.5GbE + 2x 10Gb SFP"]
+    
+    Internet --> ONT
+    ONT --> DecoMain
+    DecoMain -.wireless mesh.-> DecoS4
+    DecoMain -.wireless mesh.-> DecoLR
+    DecoS4 --> Switch
+    Switch --> TrueNAS
+    Switch --> Desktop
+    Switch --> ProxmoxFuture
+    Switch --> Available
 ```
 
 ## WiFi Configuration
