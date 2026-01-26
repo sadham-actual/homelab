@@ -22,28 +22,29 @@ This document outlines the future network design with proper segmentation using 
 
 ### Network Diagram
 
-```
-                    Internet
-                       |
-                  Frontier ONT
-                       |
-                  OPNsense VM
-              [Router/Firewall]
-               WAN: DHCP (public)
-               LAN: vmbr1 (tagged)
-                       |
-              Managed Switch (VLAN-aware)
-              [Trunk ports with tags]
-                       |
-        +-------+------+------+------+-------+
-        |       |      |      |      |       |
-      VLAN10  VLAN20 VLAN30 VLAN40 VLAN50   WiFi APs
-       Mgmt   Storage Services Test   LAN   (multiple VLANs)
-        |       |      |      |      |
-     Proxmox TrueNAS  VMs   Test   Clients
-     TrueNAS         k3s   Devices
-     OPNsense        Pis
-     (admin)
+```mermaid
+graph TB
+    Internet[Internet<br/>Frontier 500Mbps]
+    ONT[Frontier ONT]
+    OPNsense["OPNsense VM<br/>Router/Firewall<br/>WAN: DHCP Public<br/>LAN: vmbr1 Tagged"]
+    Switch["Managed Switch<br/>VLAN-Aware<br/>Trunk Ports"]
+    
+    VLAN10["VLAN 10: Management<br/>192.168.10.0/24<br/>Proxmox<br/>TrueNAS<br/>OPNsense UI<br/>Pi-hole"]
+    VLAN20["VLAN 20: Storage<br/>192.168.20.0/24<br/>TrueNAS<br/>iSCSI/NFS"]
+    VLAN30["VLAN 30: Services<br/>192.168.30.0/24<br/>VMs<br/>k3s<br/>Containers"]
+    VLAN40["VLAN 40: IoT/Test<br/>192.168.40.0/24<br/>Test VMs<br/>Untrusted<br/>Devices"]
+    VLAN50["VLAN 50: LAN<br/>192.168.50.0/24<br/>User Devices<br/>Workstations<br/>Clients"]
+    WiFi["WiFi APs<br/>Multiple SSIDs<br/>Per VLAN"]
+    
+    Internet --> ONT
+    ONT --> OPNsense
+    OPNsense --> Switch
+    Switch --> VLAN10
+    Switch --> VLAN20
+    Switch --> VLAN30
+    Switch --> VLAN40
+    Switch --> VLAN50
+    Switch --> WiFi
 ```
 
 ## VLAN 10: Management
