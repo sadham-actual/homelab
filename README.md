@@ -1,2 +1,151 @@
 # homelab
 Documentation of my homelab journey. 
+# Homelab Infrastructure Documentation
+
+Personal homelab for learning enterprise infrastructure, containerization, and networking concepts while preparing for CompTIA Network+, Security+, and Linux+ certifications.
+
+## Overview
+
+This homelab consists of:
+- **TrueNAS SCALE** - Centralized storage and current service host
+- **Proxmox VE** - Virtualization platform for VMs and future Kubernetes cluster
+- **Future OPNsense** - Network segmentation and security (planned)
+- **Raspberry Pi nodes** - Edge services and high availability (planned)
+
+## Current State
+
+### Hardware
+- **TrueNAS Server**: Xeon W-1370, 32GB RAM, 3x 4TB RAIDZ1 + cache/boot drives
+- **Proxmox Node**: Dell OptiPlex 3080 Micro, i5-10500T, 40GB RAM, 256GB SSD
+- **Edge Nodes**: 2x Raspberry Pi 4, 1x Pi Zero 2W (available for deployment)
+
+### Services (20+ running on TrueNAS)
+See [Current Services](docs/03-truenas/current-services.md) for complete inventory.
+
+**Critical Services:**
+- Jellyfin (family media streaming with hardware transcoding)
+- Immich (80k+ photos, ML-enabled backup)
+- Nginx Proxy Manager (reverse proxy with SSL)
+- Tailscale (remote access)
+- *arr stack (media automation)
+
+### Network
+- Current: TP-Link Deco mesh (192.168.1.0/24, single subnet)
+- Planned: OPNsense router/firewall with VLAN segmentation
+- Domain: example.com (Cloudflare DNS + proxy)
+- External access: Tailscale (primary), NPM with SSL (ports 80/443 forwarded)
+
+## Goals
+
+### Learning Objectives (Priority Order)
+1. **Linux Administration** - Deep systems knowledge, scripting, automation
+2. **Kubernetes** - Container orchestration, GitOps, cloud-native patterns
+3. **Networking** - VLANs, routing, firewalls, network segmentation
+4. **Security** - Hardening, monitoring, incident response
+5. **Infrastructure as Code** - Terraform, Ansible, declarative infrastructure
+
+### Certifications
+- CompTIA Network+
+- CompTIA Security+
+- CompTIA Linux+
+
+### Technical Goals
+- Learn VM management and hypervisor operations
+- Deploy and manage production-ready Kubernetes cluster
+- Implement proper network segmentation with VLANs
+- Build CI/CD pipelines for homelab automation
+- Maintain high availability for family-critical services
+
+## Project Roadmap
+
+### Phase 1: Foundation (Weeks 1-2)
+- [ ] Install and configure Proxmox on Dell 3080 Micro
+- [ ] Integrate Proxmox storage with TrueNAS (iSCSI + NFS)
+- [ ] Set up automated snapshots on TrueNAS
+- [ ] Deploy first test VMs (Ubuntu Server, Rocky Linux)
+
+### Phase 2: VM Learning (Weeks 3-4)
+- [ ] Create VM templates with cloud-init
+- [ ] Practice snapshots, cloning, and backups
+- [ ] Deploy monitoring VM (Uptime Kuma or Grafana)
+- [ ] Experiment with LXC containers
+
+### Phase 3: Service Migration Experiments (Weeks 5-8)
+- [ ] Migrate 2-3 non-critical services to Proxmox
+- [ ] Document performance differences
+- [ ] Establish backup workflow to TrueNAS
+- [ ] Test rollback procedures
+
+### Phase 4: Kubernetes Foundation (Weeks 9-12)
+- [ ] Deploy single-node k3s cluster in VM
+- [ ] Configure TrueNAS NFS for persistent storage
+- [ ] Deploy first stateless applications
+- [ ] Set up kubectl and basic monitoring
+
+### Phase 5: Network Upgrade (Future)
+- [ ] Plan OPNsense migration strategy
+- [ ] Design VLAN architecture
+- [ ] Select managed switch and WiFi APs
+- [ ] Implement phased cutover
+
+### Phase 6: Advanced Patterns (Ongoing)
+- [ ] Multi-node k3s cluster
+- [ ] GitOps with FluxCD/ArgoCD
+- [ ] CI/CD runners in Kubernetes
+- [ ] Integrate Raspberry Pi nodes
+
+## Documentation Structure
+
+- **docs/01-architecture/** - High-level design decisions and diagrams
+- **docs/02-hardware/** - Hardware specifications and capabilities
+- **docs/03-truenas/** - Storage configuration and service management
+- **docs/04-proxmox/** - Virtualization platform setup and usage
+- **docs/05-kubernetes/** - Container orchestration and deployments
+- **docs/06-networking/** - Network design, VLANs, and security
+- **docs/07-migration/** - Service migration strategies and decisions
+- **docs/08-monitoring/** - Observability and alerting
+- **docs/09-security/** - Hardening, backups, and disaster recovery
+- **docs/10-lessons-learned/** - Journey journal and retrospectives
+- **configs/** - Sanitized configuration files
+- **scripts/** - Automation and helper scripts
+- **decisions/** - Architecture Decision Records (ADRs)
+
+## Quick Links
+
+- [Architecture Overview](docs/01-architecture/overview.md)
+- [Current Network Design](docs/06-networking/current-setup.md)
+- [Service Inventory](docs/03-truenas/current-services.md)
+- [Migration Strategy](docs/07-migration/migration-strategy.md)
+
+## Time Commitment
+
+**Typical weekly schedule:** 5-10 hours
+- Weeknight sessions: 1-2 hours for reading, planning, small tasks
+- Weekend deep-dives: 3-6 hours for major implementations
+
+**Learning style:** Deep-dive, hands-on experimentation with concept explanations
+
+## Repository Conventions
+
+### Sanitization
+- IP addresses: `192.168.X.X` or `10.0.X.X`
+- Domain names: `example.local` (internal), `example.com` (external)
+- Hostnames: Descriptive but generic (e.g., `truenas-01`, `pve-node-01`)
+
+### Git Workflow
+- Main branch: Stable, tested documentation
+- Feature branches: For major documentation additions
+- Commit messages: Descriptive (e.g., "Add Proxmox storage integration guide")
+
+### Code Blocks
+- Always specify language for syntax highlighting
+- Include comments explaining non-obvious configurations
+- Provide context for why choices were made
+
+## Contributing (Future)
+
+This repository is currently private for personal learning. May be made public in the future as a resource for others building similar homelabs.
+
+## License
+
+Personal documentation - all rights reserved (for now)
