@@ -6,7 +6,7 @@
 |-----------|---------|
 | **Motherboard** | ASRock W480 Creator |
 | **CPU** | Intel Xeon W-1370 (8C/16T, Base 2.9GHz, Boost 5.1GHz) |
-| **RAM** | 32GB (4x 8GB) DDR4 ECC |
+| **RAM** | 32GB DDR4 (non-ECC — verified via `system.info`/EDAC, no ECC module detected despite board supporting it) |
 | **Network** | Onboard 2.5GbE (Intel I225-LM) |
 | **Boot Pool** | 2x 128GB SATA SSD (mirrored) |
 | **Cache** | 1x 256GB M.2 NVMe (L2ARC) |
@@ -24,7 +24,7 @@
 - **iGPU:** Intel UHD Graphics P750 (32 EUs)
   - Used for Jellyfin hardware transcoding (QuickSync)
   - Supports H.264, HEVC (H.265), VP9 hardware encoding/decoding
-- **ECC Support:** Yes (critical for ZFS data integrity)
+- **ECC Support:** Board/CPU support ECC, but the installed RAM is non-ECC (confirmed live — not a config assumption). ZFS still works fine without ECC; it just loses the extra in-memory bit-error protection ECC would add on top of ZFS's own checksumming.
 
 **Performance Notes:**
 - More than adequate for TrueNAS + 20+ Docker containers
@@ -43,7 +43,7 @@
 - **USB:** Multiple USB 3.2 Gen2 ports
 
 **Why This Board:**
-- Native ECC memory support
+- Native ECC memory support (board supports it; current installed RAM is non-ECC — see CPU section above. Swapping to ECC modules would be a straightforward future upgrade if desired)
 - Ample SATA ports for storage expansion
 - PCIe slots available for HBA and future expansion
 - Intel 2.5GbE provides good network performance
@@ -216,4 +216,4 @@ Datasets:
 
 ---
 
-*Last Updated: 2025-01-26*
+*Last Updated: 2026-07-24*

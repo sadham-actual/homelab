@@ -54,9 +54,9 @@
 - **Location:** Connected to desk Deco S4 unit
 - **Connected Devices:**
   - TrueNAS server (2.5GbE)
-  - Desktop PC (2.5GbE)
-  - Proxmox node (1GbE, when added)
-  - Available ports: 5x 2.5GbE, 2x 10Gb SFP
+  - MacBook Pro (via docking station, 2.5GbE when docked at home; portable, so not always present on the network)
+  - 3x Proxmox cluster nodes (1GbE each)
+  - Available ports: 2x 2.5GbE, 2x 10Gb SFP
 
 **Switch Limitations:**
 - Unmanaged = no VLAN support
@@ -73,10 +73,10 @@
 
 ### Known Device IPs
 - **Gateway:** 192.168.1.1 (Deco router)
-- **TrueNAS:** 192.168.1.X (should set to static, e.g., 192.168.1.10)
-- **Proxmox:** 192.168.1.X (plan for static, e.g., 192.168.1.50)
-- **Desktop PC:** 192.168.1.X (DHCP or static)
-- **Raspberry Pis:** Not yet assigned
+- **TrueNAS:** 192.168.1.X (static)
+- **Proxmox cluster:** 3x static IPs in the 192.168.1.10-19 infrastructure range, one per node
+- **MacBook Pro (docking station):** 192.168.1.X (DHCP or static, only present when docked at home)
+- **Raspberry Pis:** Not yet deployed/assigned
 
 **IP Assignment Strategy:**
 - 192.168.1.1 - Gateway (Deco)
@@ -186,9 +186,9 @@ graph TB
     Switch["YuanLey 2.5Gb Switch<br/>Unmanaged<br/>8x 2.5GbE + 2x 10Gb SFP"]
     
     TrueNAS["TrueNAS SCALE<br/>192.168.1.X<br/>2.5GbE"]
-    Desktop["Desktop PC<br/>192.168.1.X<br/>2.5GbE"]
-    ProxmoxFuture["Proxmox<br/>Future<br/>1GbE"]
-    Available["Available Ports<br/>5x 2.5GbE + 2x 10Gb SFP"]
+    Desktop["MacBook Pro<br/>192.168.1.X (when docked)<br/>2.5GbE via dock"]
+    ProxmoxCluster["Proxmox Cluster<br/>3x nodes, 1GbE each"]
+    Available["Available Ports<br/>2x 2.5GbE + 2x 10Gb SFP"]
     
     Internet --> ONT
     ONT --> DecoMain
@@ -197,7 +197,7 @@ graph TB
     DecoS4 --> Switch
     Switch --> TrueNAS
     Switch --> Desktop
-    Switch --> ProxmoxFuture
+    Switch --> ProxmoxCluster
     Switch --> Available
 ```
 
@@ -253,14 +253,8 @@ graph TB
 - Document current device IPs
 - Test network performance baseline
 
-### Phase 2: Proxmox Addition (Next 1-2 Weeks)
-**Goal:** Add Proxmox node to network
-
-**Actions:**
-- Assign static IP to Proxmox (192.168.1.50)
-- Connect Proxmox to YuanLey switch
-- Configure Proxmox networking (single interface, no VLANs yet)
-- Test connectivity between TrueNAS and Proxmox
+### Phase 2: Proxmox Addition — Done
+Three Proxmox nodes are on the network with static IPs in the infrastructure range, connected to the YuanLey switch, single interface each, no VLANs yet. TrueNAS-Proxmox connectivity works; TrueNAS storage (iSCSI/NFS) is not yet mounted as Proxmox storage — see [Proxmox Cluster Hardware](../02-hardware/proxmox-node.md).
 
 ### Phase 3: Managed Switch (1-3 Months)
 **Goal:** Replace unmanaged switch with managed switch for VLAN support
@@ -433,4 +427,4 @@ graph TB
 
 ---
 
-*Last Updated: 2025-01-26*
+*Last Updated: 2026-07-23*

@@ -37,8 +37,9 @@ graph TB
     Deco[TP-Link Deco W7200<br/>Router/DHCP/WiFi<br/>192.168.1.1]
     Switch[YuanLey 8x2.5Gb Switch<br/>Unmanaged]
     
-    TrueNAS[TrueNAS SCALE<br/>Xeon W-1370, 32GB<br/>3x4TB RAIDZ1<br/>20+ Services]
-    Desktop[Desktop PC<br/>Windows/Linux Mint]
+    TrueNAS[TrueNAS SCALE<br/>Xeon W-1370, 32GB<br/>3x4TB RAIDZ1<br/>~30 Services]
+    ProxmoxCluster[Proxmox VE Cluster<br/>3x Dell OptiPlex Micro<br/>mostly idle]
+    Desktop[MacBook Pro 14" M5 Pro<br/>Docked at home, portable]
     
     Internet --> ONT
     ONT --> Deco
@@ -46,6 +47,7 @@ graph TB
     Deco -.mesh.-> DecoLR[Deco W7200<br/>Living Room]
     DecoS4 --> Switch
     Switch --> TrueNAS
+    Switch --> ProxmoxCluster
     Switch --> Desktop
     
     subgraph "TrueNAS Services"
@@ -54,6 +56,8 @@ graph TB
         NPM[Nginx Proxy Manager<br/>Reverse Proxy]
         Tailscale[Tailscale<br/>VPN]
         ARR[*arr Stack<br/>Media Automation]
+        LLM[Ollama + Open WebUI<br/>Local LLM]
+        Cloud[Nextcloud + Collabora<br/>File Sync/Office]
     end
     
     TrueNAS --> Jellyfin
@@ -61,6 +65,16 @@ graph TB
     TrueNAS --> NPM
     TrueNAS --> Tailscale
     TrueNAS --> ARR
+    TrueNAS --> LLM
+    TrueNAS --> Cloud
+
+    subgraph "Proxmox Workloads"
+        DockerVM[docker-1 VM]
+        BudgetLXC[actualbudget LXC]
+    end
+
+    ProxmoxCluster --> DockerVM
+    ProxmoxCluster --> BudgetLXC
 ```
 
 ## Target Architecture (6-12 Months)
@@ -130,9 +144,11 @@ graph TB
 ### Proxmox VE
 **Role:** Compute and virtualization platform
 
+**Current State:** Live 3-node cluster (`homelab`), quorate. All current workloads (one Docker VM, one LXC) run on a single node; the other two nodes are online but idle. See [Proxmox Cluster Hardware](../02-hardware/proxmox-node.md) for per-node specs, including a known power-delivery issue on one node ([ADR-0102](../../decisions/0102-pve-node-power-delivery-fix.md)).
+
 **Responsibilities:**
 - Hypervisor for all virtual machines
-- Host for Kubernetes cluster VMs
+- Host for Kubernetes cluster VMs (not yet deployed — see Next Steps)
 - Test and development environments
 - Future OPNsense firewall (VM with PCI passthrough or bridged networking)
 - Learning platform for VM management
@@ -255,8 +271,8 @@ See [decisions/](../../decisions/) folder for Architecture Decision Records (ADR
 ## Scalability
 
 ### Current Capacity
-- **Storage:** ~8TB usable (RAIDZ1), ~75% full
-- **Compute:** TrueNAS can handle current Docker load, Proxmox will add significant compute capacity
+- **Storage:** ~10.9TiB usable (RAIDZ1), ~48% allocated
+- **Compute:** TrueNAS handles current Docker/App load; Proxmox cluster exists but is mostly idle (2 of 3 nodes have no workloads)
 - **Network:** 500Mbps internet, 2.5Gb internal backbone sufficient for now
 
 ### Expansion Paths
@@ -267,12 +283,12 @@ See [decisions/](../../decisions/) folder for Architecture Decision Records (ADR
 
 ## Next Steps
 
-1. Complete Proxmox installation (Phase 1)
-2. Integrate Proxmox storage with TrueNAS
-3. Document current service configurations before any migrations
-4. Set up automated snapshots and backups
-5. Begin VM experimentation
+1. Integrate Proxmox storage with TrueNAS (iSCSI/NFS) — not done yet, VMs currently use only node-local LVM-thin
+2. Assign real workloads to the two idle Proxmox nodes
+3. Deploy k3s (no Kubernetes exists anywhere in the homelab yet)
+4. Set up automated snapshots and backups for Proxmox VMs
+5. Plan OPNsense/VLAN network migration
 
 ---
 
-*Last Updated: 2025-01-26*
+*Last Updated: 2026-07-23*

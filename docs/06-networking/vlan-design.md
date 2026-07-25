@@ -282,15 +282,12 @@ User devices, workstations, family members' phones/laptops. Main network for dai
 ### IP Assignments
 - **192.168.50.1** - OPNsense (gateway)
 - **192.168.50.10-49** - Static IPs for trusted devices
-  - 192.168.50.10 - Admin workstation
-  - 192.168.50.11 - Desktop PC
-  - 192.168.50.12 - Laptop
-  - 192.168.50.13-49 - Reserved for family devices
+  - 192.168.50.10 - Admin workstation (MacBook Pro, via docking station when at home)
+  - 192.168.50.11-49 - Reserved for family devices
 - **192.168.50.50-254** - DHCP pool (phones, tablets, guests)
 
 ### Devices on This VLAN
-- Desktop PC (Windows/Linux)
-- Laptop
+- MacBook Pro (primary workstation — portable, only present when docked at home)
 - Family members' phones, tablets, laptops
 - Smart TVs (if trusted)
 - Gaming consoles
@@ -475,7 +472,7 @@ For devices that need consistent IPs but don't support static:
 **Access Ports (Single VLAN, Untagged):**
 - Port 4: TrueNAS (VLAN 10 untagged, VLAN 20 tagged)
 - Port 5: Proxmox (VLAN 10 untagged, VLAN 20 tagged)
-- Port 6: Desktop PC (VLAN 50 untagged)
+- Port 6: MacBook Pro dock (VLAN 50 untagged)
 - Port 7: Available (VLAN 50 default)
 - Port 8: Available (VLAN 50 default)
 

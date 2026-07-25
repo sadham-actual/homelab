@@ -8,7 +8,7 @@ Personal homelab for learning enterprise infrastructure, containerization, and n
 
 This homelab consists of:
 - **TrueNAS SCALE** - Centralized storage and current service host
-- **Proxmox VE** - Virtualization platform for VMs and future Kubernetes cluster
+- **Proxmox VE** - 3-node cluster for VMs and future Kubernetes cluster (mostly idle capacity currently)
 - **Future OPNsense** - Network segmentation and security (planned)
 - **Raspberry Pi nodes** - Edge services and high availability (planned)
 
@@ -16,10 +16,10 @@ This homelab consists of:
 
 ### Hardware
 - **TrueNAS Server**: Xeon W-1370, 32GB RAM, 3x 4TB RAIDZ1 + cache/boot drives
-- **Proxmox Node**: Dell OptiPlex 3080 Micro, i5-10500T, 40GB RAM, 256GB SSD
-- **Edge Nodes**: 2x Raspberry Pi 4, 1x Pi Zero 2W (available for deployment)
+- **Proxmox Cluster**: 3x Dell OptiPlex Micro nodes (2x 3080 Micro/i5-10500T/16GB, 1x 3000 Micro/i5-12500T/32GB) — see [Proxmox Cluster Hardware](docs/02-hardware/proxmox-node.md)
+- **Edge Nodes**: 2x Raspberry Pi 4, 1x Pi Zero 2W (available for deployment, not yet deployed)
 
-### Services (20+ running on TrueNAS)
+### Services (~30 running on TrueNAS)
 See [Current Services](docs/03-truenas/current-services.md) for complete inventory.
 
 **Critical Services:**
@@ -59,19 +59,19 @@ See [Current Services](docs/03-truenas/current-services.md) for complete invento
 ## Project Roadmap
 
 ### Phase 1: Foundation (Weeks 1-2)
-- [ ] Install and configure Proxmox on Dell 3080 Micro
-- [ ] Integrate Proxmox storage with TrueNAS (iSCSI + NFS)
+- [x] Install and configure Proxmox — grew to a 3-node cluster (`homelab`), not just the single Dell 3080 Micro originally planned
+- [ ] Integrate Proxmox storage with TrueNAS (iSCSI + NFS) — VMs currently use only node-local LVM-thin
 - [ ] Set up automated snapshots on TrueNAS
-- [ ] Deploy first test VMs (Ubuntu Server, Rocky Linux)
+- [x] Deploy first test VMs (Ubuntu 24.04 Desktop + Server, not Rocky Linux)
 
 ### Phase 2: VM Learning (Weeks 3-4)
 - [ ] Create VM templates with cloud-init
 - [ ] Practice snapshots, cloning, and backups
-- [ ] Deploy monitoring VM (Uptime Kuma or Grafana)
-- [ ] Experiment with LXC containers
+- [ ] Deploy monitoring VM (Uptime Kuma or Grafana) — Uptime Kuma is running, but on TrueNAS/dockge, not as a Proxmox VM
+- [x] Experiment with LXC containers — `actualbudget` LXC running on Proxmox
 
 ### Phase 3: Service Migration Experiments (Weeks 5-8)
-- [ ] Migrate 2-3 non-critical services to Proxmox
+- [ ] Migrate 2-3 non-critical services to Proxmox — one LXC (actualbudget) migrated; two of three cluster nodes still have no workloads
 - [ ] Document performance differences
 - [ ] Establish backup workflow to TrueNAS
 - [ ] Test rollback procedures
