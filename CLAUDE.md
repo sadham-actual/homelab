@@ -30,7 +30,9 @@ Numbered `docs/` subfolders are referenced by number in the README's "Documentat
 
 ## Content conventions
 
-- **Sanitize all examples**: IPs as `192.168.X.X` / `10.0.X.X`, internal domains as `example.local`, external as `example.com`, hostnames generic-but-descriptive (`truenas-01`, `pve-node-01`). This repo may go public later, so nothing identifying (real IPs, real domain `example.com`, credentials, tokens) belongs in committed docs.
+- **Sanitize all examples — THIS REPO IS PUBLIC**: use placeholder IPs (`192.168.1.x` / `10.0.0.x`), internal domains as `example.local`, external as `example.com`, hostnames generic-but-descriptive (`truenas-01`, `pve-node-01`). Never commit anything identifying: real public IPs, your real domain, your real internal LAN subnet, personal name/email, credentials, tokens, or API keys.
+- **Sensitive-data guard**: a pre-commit hook (`scripts/check-sensitive.sh`, installed at `.git/hooks/pre-commit`) blocks commits containing secrets or identifying strings. Generic secret patterns are built into the script; the repo-specific literals (real domain, LAN subnet, personal email) live only in the **untracked** `.git/sensitive-patterns.txt` so they're never re-published. If it fires, fix the content — don't bypass with `--no-verify`. Commits are authored under the repo's no-reply identity (`git config user.email` is set locally to a `users.noreply.github.com` address); never commit with a personal email.
+- **Fresh-clone setup** (the hook + local patterns don't travel with a clone): copy `scripts/check-sensitive.sh` to `.git/hooks/pre-commit` (`chmod +x`), create `.git/sensitive-patterns.txt` with your private literals, and set `git config user.email` to your `users.noreply.github.com` address.
 - Fenced code blocks always specify a language for syntax highlighting.
 - Configuration snippets include comments explaining *why*, not just *what*.
 - Diagrams use Mermaid fenced blocks (see recent history: network and VLAN diagrams were converted to Mermaid) rather than external image tools, so they render and diff directly on GitHub.
