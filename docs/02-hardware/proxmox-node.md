@@ -7,7 +7,7 @@ The Proxmox VE cluster is named `homelab` and currently has three nodes, all Del
 | Node | Model | CPU | RAM | Storage | BIOS | Role |
 |------|-------|-----|-----|---------|------|------|
 | `pve-01` | Dell OptiPlex 3080 Micro | i5-10500T (6C/12T) | 16GB DDR4-2400 | 256GB NVMe | 2.35.0 | Primary — hosts current VMs/LXCs |
-| `pve-02` | Dell OptiPlex 3000 Micro | i5-12500T (6C/12T) | 32GB DDR4-3200 | 512GB NVMe | 1.39.1 | Idle — see power delivery note below |
+| `pve-02` | Dell OptiPlex 3000 Micro | i5-12500T (6C/12T) | 32GB DDR4-3200 | 512GB NVMe | 1.39.1 | Idle — on a dedicated 100W adapter; see power delivery note below |
 | `pve-03` | Dell OptiPlex 3080 Micro | i5-10500T (6C/12T) | 16GB DDR4-2666 | 256GB NVMe | 2.34.0 | Idle |
 
 All three nodes: single Gigabit Ethernet NIC, connected to `vmbr0` on the flat `192.168.1.0/24` network (no VLANs yet — see [Networking: Current Setup](../06-networking/current-setup.md)).
@@ -30,7 +30,6 @@ done > bios-baseline.txt
 
 The settings that matter afterwards: `Virtualization` and `VtForDirectIo` (lose either and VMs won't start), `AcPwrRcvry` (lose it and the node stays dark after a power cut), `BootList`, `SecureBoot`.
 
-
 ## Known Issue: pve-02 Power Delivery
 
 `pve-02` is currently powered by a dedicated 100W USB-C PD brick rather than the shared power rig used by the other two nodes (one upstream supply feeding 5x 65W USB-C PD trigger boards → USB-C-to-Dell-barrel adapters). The shared rig could not reliably deliver the current spike from bringing all 12 threads online, causing a boot crash-loop; the dedicated 100W brick resolved it. Full writeup: [ADR-0102](../../decisions/0102-pve-node-power-delivery-fix.md) (supersedes the earlier, incorrect ACPI-based diagnosis in [ADR-0101](../../decisions/0101-pve-node-acpi-workaround.md)).
@@ -40,6 +39,27 @@ The settings that matter afterwards: `Virtualization` and `VtForDirectIo` (lose 
 `pve-02` was at some point moved back onto the shared 65W rig, and the fault returned exactly as ADR-0102 predicted. Four consecutive boot attempts collapsed — `journalctl --list-boots` recorded four boots that **started and ended in the same second** — on both the newer kernel *and* the known-good fallback, confirming the failure is power, not software. A 100W adapter booted it first try. Cost: 7 additional unsafe shutdowns.
 
 The same root cause also explains the node's ~20/day corosync ring flaps, previously tracked as an unrelated network problem. Brief voltage sags stall CPU and NIC together for a few hundred milliseconds — invisible to every log, indifferent to corosync's realtime priority. See [Diagnosing Hardware by Comparison](../10-lessons-learned/diagnosing-hardware-by-comparison.md).
+
+### Confirmed fixed 2026-09-04
+
+After 11.3 hours on the 100W adapter:
+
+| Metric | Baseline (65W rig) | After |
+|---|---|---|
+| Corosync ring flaps | ~20/day (~9.6 expected in this window) | **0** |
+| TOTEM retransmits | ~290/day | **0** |
+| Kernel link-down events | — | **0** |
+
+Corroborated independently from all three nodes — `pve-01` and `pve-03` previously logged 24 and 38 `host: 2 link: 0 is down` events per day respectively, and now log zero. A 5/sec ping monitor recorded 201,547 replies with no timeouts. At the old rate, observing zero flaps in this window has a probability of roughly 1 in 14,000.
+
+Verify the count any time with:
+
+```bash
+# each flap logs both peers, so divide by two
+journalctl -u corosync --since "<test start>" | grep -c "has no active links"
+```
+
+**Caveat on attribution:** the power adapter *and* the kernel (6.14.11-8 → 6.17.13-21) changed together, so this window alone does not isolate which fixed it. Power is the strong conclusion because the node has only ever exhibited these symptoms while on the shared rig, and because the known-good fallback kernel browned out identically on that supply. Booting 6.14.11-8 on the 100W adapter would isolate it definitively if that ever matters.
 
 ### Shared-rig headroom — follow-up now answered
 
@@ -118,4 +138,4 @@ These items from the original hardware plan have not happened yet:
 
 ---
 
-*Last Updated: 2026-09-03*
+*Last Updated: 2026-09-04*

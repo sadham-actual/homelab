@@ -110,6 +110,21 @@ journalctl --list-boots
 
 That same night also explains a previously unrelated mystery: the node's `grub.cfg` had "frozen" on that date, leaving it booting a known-bad kernel unattended for five weeks. An `update-grub` interrupted by a collapsing rail leaves exactly that.
 
+### Confirming the fix
+
+A fix for an intermittent fault is a claim until it's measured against a known rate. The pre-fix baseline was gathered first, deliberately:
+
+```bash
+# Baseline: ~20 flaps/day (49 peer-loss pairs over 2.4 days)
+journalctl -u corosync --since "<start>" --until "<end>" | grep -c "has no active links"
+```
+
+After 11.3 hours on a 100W adapter: **0 flaps, 0 retransmits, 0 link-down events**, confirmed independently from all three nodes. At the old rate ~9.6 flaps were expected; observing zero has a probability around 1 in 14,000 if nothing had changed.
+
+That last number is the point. "It seems better" is not a result for a fault that only fires ~20 times a day — without a baseline and an expected count, a quiet evening proves nothing. Capture the rate *before* changing anything.
+
+One honest limitation: the adapter and the kernel were changed together, so strictly this window shows "adapter and/or kernel." Power remains the sound conclusion, because the node had only ever failed while on the shared rig and because the known-good fallback kernel browned out identically on it. The clean experiment would have changed one variable at a time.
+
 ## Lessons
 
 **1. Identical hardware is a diagnostic instrument.** Every correct conclusion here came from an A/B against a twin. Every wrong one came from reasoning about a single machine in isolation. This is a real argument for hardware uniformity in a small cluster that has nothing to do with aesthetics.
@@ -124,6 +139,10 @@ That same night also explains a previously unrelated mystery: the node's `grub.c
 
 **6. Some things are only knowable outside the machine.** No amount of `sysfs` reading would have revealed a 65W power brick. The operator's knowledge of the physical build closed the case.
 
+**7. Baseline the fault rate before you change anything.** An intermittent fault needs a measured before-and-after, or "it seems fine now" is indistinguishable from a quiet evening. Counting flaps per day first is what turned the fix from a hope into a result.
+
+**8. Change one variable at a time — and note it when you don't.** The adapter and kernel were swapped together out of expedience. The conclusion still holds on other evidence, but the experiment was weaker than it needed to be.
+
 ---
 
-*Last Updated: 2026-09-03*
+*Last Updated: 2026-09-04*
