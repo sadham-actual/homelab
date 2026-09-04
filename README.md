@@ -66,15 +66,15 @@ See [Current Services](docs/03-truenas/current-services.md) for complete invento
 
 ### Phase 2: VM Learning (Weeks 3-4)
 - [ ] Create VM templates with cloud-init
-- [ ] Practice snapshots, cloning, and backups
+- [ ] Practice snapshots, cloning, and backups — snapshots and backups exercised; VM cloning/templates still untouched
 - [ ] Deploy monitoring VM (Uptime Kuma or Grafana) — Uptime Kuma is running, but on TrueNAS/dockge, not as a Proxmox VM
 - [x] Experiment with LXC containers — `actualbudget` LXC running on Proxmox
 
 ### Phase 3: Service Migration Experiments (Weeks 5-8)
 - [ ] Migrate 2-3 non-critical services to Proxmox — one LXC (actualbudget) migrated; two of three cluster nodes still have no workloads
 - [ ] Document performance differences
-- [ ] Establish backup workflow to TrueNAS
-- [ ] Test rollback procedures
+- [x] Establish backup workflow to TrueNAS — nightly `vzdump` to a TrueNAS NFS dataset ([ADR-0006](decisions/0006-proxmox-backup-strategy.md), [runbook](docs/04-proxmox/backups.md))
+- [x] Test rollback procedures — restore verified end to end, incl. SQLite integrity check on restored data
 
 ### Phase 4: Kubernetes Foundation (Weeks 9-12)
 - [ ] Deploy single-node k3s cluster in VM
@@ -116,6 +116,9 @@ See [Current Services](docs/03-truenas/current-services.md) for complete invento
 - [Current Network Design](docs/06-networking/current-setup.md)
 - [Service Inventory](docs/03-truenas/current-services.md)
 - [Migration Strategy](docs/07-migration/migration-strategy.md)
+- [Proxmox Cluster Hardware](docs/02-hardware/proxmox-node.md)
+- [Proxmox Backups](docs/04-proxmox/backups.md)
+- [Diagnosing Hardware by Comparison](docs/10-lessons-learned/diagnosing-hardware-by-comparison.md)
 
 ## Time Commitment
 
