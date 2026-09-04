@@ -118,6 +118,7 @@ See [Current Services](docs/03-truenas/current-services.md) for complete invento
 - [Migration Strategy](docs/07-migration/migration-strategy.md)
 - [Proxmox Cluster Hardware](docs/02-hardware/proxmox-node.md)
 - [Proxmox Backups](docs/04-proxmox/backups.md)
+- [Upgrades and Kernel Pinning](docs/04-proxmox/upgrades-and-kernels.md)
 - [Diagnosing Hardware by Comparison](docs/10-lessons-learned/diagnosing-hardware-by-comparison.md)
 
 ## Time Commitment

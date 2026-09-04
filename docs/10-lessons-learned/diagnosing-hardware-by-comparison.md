@@ -123,7 +123,19 @@ After 11.3 hours on a 100W adapter: **0 flaps, 0 retransmits, 0 link-down events
 
 That last number is the point. "It seems better" is not a result for a fault that only fires ~20 times a day — without a baseline and an expected count, a quiet evening proves nothing. Capture the rate *before* changing anything.
 
-One honest limitation: the adapter and the kernel were changed together, so strictly this window shows "adapter and/or kernel." Power remains the sound conclusion, because the node had only ever failed while on the shared rig and because the known-good fallback kernel browned out identically on it. The clean experiment would have changed one variable at a time.
+One honest limitation at the time: the adapter and the kernel were changed together, so strictly that window showed "adapter and/or kernel."
+
+**Resolved the next day, by accident of unrelated work.** Routine package upgrades moved the node onto a *third* kernel (7.0.14-15), and it stayed clean. So the picture became:
+
+| | 65W supply | 100W supply |
+|---|---|---|
+| 6.14.11-8 | unstable (months of unsafe shutdowns, ~20 flaps/day) + boot brownout | — |
+| 6.17.13-21 | boot brownout | stable, 0 flaps in 13h |
+| 7.0.14-15 | — | stable |
+
+The kernel was varied on both sides and changed nothing; the supply was varied and changed everything. That retires the confound without needing the deliberate one-variable experiment.
+
+The lesson survives anyway: **the clean experiment would have changed one variable at a time**, and it was luck rather than design that resolved this one. Had the upgrade not happened, the ambiguity would still be sitting there.
 
 ## Lessons
 

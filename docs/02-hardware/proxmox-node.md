@@ -16,6 +16,8 @@ All three nodes: single Gigabit Ethernet NIC, connected to `vmbr0` on the flat `
 
 ## BIOS
 
+**Software versions (2026-09-04):** all three nodes run **pve-manager 9.2.11 / proxmox-ve 9.2.0** on kernel **7.0.14-15-pve**, with 0 pending updates. See [Upgrades and Kernel Pinning](../04-proxmox/upgrades-and-kernels.md) for the procedure and the pinning traps.
+
 **Keep BIOS versions current and matched.** `pve-01` ran on its factory 1.1.0 (2020) until 2026-09-03, which caused a persistently over-driven cooling fan — audible at idle while running *cooler* than its identically-specced twin. Flashing to 2.35.0 fixed it. Full writeup: [Diagnosing Hardware by Comparison](../10-lessons-learned/diagnosing-hardware-by-comparison.md). `pve-03` is still on 2.34.0 and behaving; bring it to 2.35.0 during a maintenance window.
 
 **Before any BIOS flash on a Proxmox host**, dump the current settings — a large version jump usually resets them to defaults:
@@ -59,7 +61,12 @@ Verify the count any time with:
 journalctl -u corosync --since "<test start>" | grep -c "has no active links"
 ```
 
-**Caveat on attribution:** the power adapter *and* the kernel (6.14.11-8 → 6.17.13-21) changed together, so this window alone does not isolate which fixed it. Power is the strong conclusion because the node has only ever exhibited these symptoms while on the shared rig, and because the known-good fallback kernel browned out identically on that supply. Booting 6.14.11-8 on the 100W adapter would isolate it definitively if that ever matters.
+**Attribution — resolved 2026-09-04.** The initial window changed adapter *and* kernel together, so it did not isolate the cause on its own. Subsequent evidence does:
+
+- **Unstable across kernels on the 65W supply** — months of unsafe shutdowns and ~20 flaps/day on 6.14.11-8, and boot brownouts on *both* 6.17.13-21 and the known-good 6.14.11-8 fallback.
+- **Stable across kernels on the 100W supply** — 6.17.13-21 for 13h with zero flaps, then 7.0.14-15 with the same clean result.
+
+The kernel was varied on both sides of the change and made no difference; the adapter did. Combined with the operator's own account that this node has only ever misbehaved while on the custom PDU, **the power supply was the cause**. The kernel-mismatch theory is fully retired.
 
 ### Shared-rig headroom — follow-up now answered
 
@@ -133,8 +140,9 @@ These items from the original hardware plan have not happened yet:
 
 - SSH access: `root@<node-ip>` with key auth (see `~/.ssh/config` aliases `pve-01`/`pve-02`/`pve-03` on the management workstation).
 - Before touching `pve-02`'s boot configuration again, read [ADR-0102](../../decisions/0102-pve-node-power-delivery-fix.md) first — the original ACPI diagnosis was wrong and cost real troubleshooting time. If `pve-02` misbehaves in *any* way — boot failures, cluster instability, unexplained resets — **check what is powering it before troubleshooting software.**
-- `pve-02` keeps a pinned `GRUB_DEFAULT` on a known-good kernel so an unattended power-on always lands somewhere bootable. Do not use `grub-reboot` one-shots on these nodes: `grubenv` sits on LVM, so they are sticky rather than self-clearing. Pick alternate kernels from the GRUB menu at the console instead.
-- The GRUB menu timeout is 5 seconds, which is often shorter than a monitor takes to sync. Raise `GRUB_TIMEOUT` before planning a console kernel selection.
+- **The kernel pin is not always in `/etc/default/grub`.** `pve-02` and `pve-03` carry `/etc/default/grub.d/proxmox-kernel-pin.cfg`, a drop-in sourced *afterwards* that overrides it; `pve-01` has no drop-in. Editing the wrong file looks like it worked but changes nothing — always verify with `grep -oE 'set default="gnulinux-advanced[^"]*' /boot/grub/grub.cfg`. Details in [Upgrades and Kernel Pinning](../04-proxmox/upgrades-and-kernels.md).
+- All three nodes keep a pinned kernel so an unattended power-on always lands somewhere known. Do not use `grub-reboot` one-shots on these nodes: `grubenv` sits on LVM, so they are sticky rather than self-clearing. Pick alternate kernels from the GRUB menu at the console instead.
+- Menu timeouts are `GRUB_TIMEOUT=5` for normal boots plus `GRUB_RECORDFAIL_TIMEOUT=30`, so a long menu appears only after a *failed* boot — which is when a fallback kernel actually needs selecting.
 
 ---
 
