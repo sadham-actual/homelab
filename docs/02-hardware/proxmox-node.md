@@ -8,7 +8,7 @@ The Proxmox VE cluster is named `homelab` and currently has three nodes, all Del
 |------|-------|-----|-----|---------|------|------|
 | `pve-01` | Dell OptiPlex 3080 Micro | i5-10500T (6C/12T) | 16GB DDR4-2400 | 256GB NVMe | 2.35.0 | Primary — hosts current VMs/LXCs |
 | `pve-02` | Dell OptiPlex 3000 Micro | i5-12500T (6C/12T) | 32GB DDR4-3200 | 512GB NVMe | 1.39.1 | Idle — on a dedicated 100W adapter; see power delivery note below |
-| `pve-03` | Dell OptiPlex 3080 Micro | i5-10500T (6C/12T) | 16GB DDR4-2666 | 256GB NVMe | 2.34.0 | Idle |
+| `pve-03` | Dell OptiPlex 3080 Micro | i5-10500T (6C/12T) | 16GB DDR4-2666 | 256GB NVMe | 2.35.0 | Idle |
 
 All three nodes: single Gigabit Ethernet NIC, connected to `vmbr0` on the flat `192.168.1.0/24` network (no VLANs yet — see [Networking: Current Setup](../06-networking/current-setup.md)).
 
@@ -18,19 +18,64 @@ All three nodes: single Gigabit Ethernet NIC, connected to `vmbr0` on the flat `
 
 **Software versions (2026-09-04):** all three nodes run **pve-manager 9.2.11 / proxmox-ve 9.2.0** on kernel **7.0.14-15-pve**, with 0 pending updates. See [Upgrades and Kernel Pinning](../04-proxmox/upgrades-and-kernels.md) for the procedure and the pinning traps.
 
-**Keep BIOS versions current and matched.** `pve-01` ran on its factory 1.1.0 (2020) until 2026-09-03, which caused a persistently over-driven cooling fan — audible at idle while running *cooler* than its identically-specced twin. Flashing to 2.35.0 fixed it. Full writeup: [Diagnosing Hardware by Comparison](../10-lessons-learned/diagnosing-hardware-by-comparison.md). `pve-03` is still on 2.34.0 and behaving; bring it to 2.35.0 during a maintenance window.
+**Keep BIOS versions current and matched.** `pve-01` ran on its factory 1.1.0 (2020) until 2026-09-03, which caused a persistently over-driven cooling fan — audible at idle while running *cooler* than its identically-specced twin. Flashing to 2.35.0 fixed it. Full writeup: [Diagnosing Hardware by Comparison](../10-lessons-learned/diagnosing-hardware-by-comparison.md). Both 3080 Micros are on **2.35.0** as of 2026-09-04; the 3000 Micro is a different platform with its own version line.
 
-**Before any BIOS flash on a Proxmox host**, dump the current settings — a large version jump usually resets them to defaults:
+Both flashes raised idle temperature (`pve-01` 33→45 °C, `pve-03` 35→39 °C) because the newer fan curve stops over-cooling. **A higher idle temperature is the expected result**, not a regression.
+
+### Before a flash: dump the settings
+
+A large version jump can reset everything to defaults. Dell exposes BIOS attributes read-only in sysfs:
 
 ```bash
-# Dell exposes BIOS attributes read-only in sysfs
 d=/sys/class/firmware-attributes/dell-wmi-sysman/attributes
 for a in $(ls $d); do
   [ -f "$d/$a/current_value" ] && echo "$a = $(cat $d/$a/current_value)"
 done > bios-baseline.txt
 ```
 
-The settings that matter afterwards: `Virtualization` and `VtForDirectIo` (lose either and VMs won't start), `AcPwrRcvry` (lose it and the node stays dark after a power cut), `BootList`, `SecureBoot`.
+### After a flash: diff, don't eyeball
+
+Re-dump and `diff` against the baseline. **This is the reliable check** — reading a BIOS menu by hand is how settings get missed. (The `Integrated NIC` entry was initially left off a hand-written checklist; disabling it would have left a headless node unreachable.)
+
+```bash
+diff bios-baseline.txt bios-after.txt
+```
+
+Expect zero differences other than ones you made deliberately. `pve-03`'s 2.34.0 → 2.35.0 flash preserved all 103 settings.
+
+### What to verify, by consequence
+
+**Tier 1 — node won't work or won't be reachable:**
+
+| Setting | Value | If wrong |
+|---|---|---|
+| `EmbNic1` (Integrated NIC) | Enabled | node comes back headless with no network |
+| `Virtualization` | Enabled | VMs won't start |
+| `VtForDirectIo` | Enabled | passthrough breaks |
+| `BootList` | Uefi | won't boot |
+| `EmbSataRaid` (SATA Operation) | Ahci | disk may not be found |
+| `M2PcieSsd2` | Enabled | NVMe not detected |
+
+**Tier 2 — boots but degraded:** `LogicProc` (Hyper-Threading) Enabled, `CpuCore` CoresAll, `SecureBoot` Disabled, `DustFilter` **Disabled** (enabling it deliberately raises fan speed).
+
+**Tier 3 — power-cut recovery.** These decide whether a node comes back by itself, which matters most if there is no UPS:
+
+| Setting | Value | Why |
+|---|---|---|
+| `AcPwrRcvry` | **On** | `Last` only restores the *previous* state — a node that was off when power died stays off |
+| `DeepSleepCtrl` | **Disabled** | Deep Sleep blocks Wake-on-LAN and can interfere with AC recovery |
+
+`pve-03` was found on `AcPwrRcvry=Last` and `DeepSleepCtrl=S4AndS5` — pre-existing drift, not caused by any flash, which had quietly made it the node least likely to self-recover from an outage. Both were corrected during the 2026-09-04 flash.
+
+### Comparing nodes surfaces drift
+
+Diffing one node's BIOS dump against an identical node's finds configuration that has quietly diverged, independent of any flash:
+
+```bash
+diff <(grep -v '^SvcTag\|^Asset' node-a.txt) <(grep -v '^SvcTag\|^Asset' node-b.txt)
+```
+
+That is how the `AcPwrRcvry` / `DeepSleepCtrl` drift above was found. Worth running occasionally on machines that are meant to be identical.
 
 ## Known Issue: pve-02 Power Delivery
 

@@ -141,6 +141,8 @@ The lesson survives anyway: **the clean experiment would have changed one variab
 
 **1. Identical hardware is a diagnostic instrument.** Every correct conclusion here came from an A/B against a twin. Every wrong one came from reasoning about a single machine in isolation. This is a real argument for hardware uniformity in a small cluster that has nothing to do with aesthetics.
 
+The same trick works on *configuration*, not just measurements. Diffing one node's BIOS settings dump against its twin later turned up two settings that had quietly drifted — `AcPwrRcvry=Last` and `DeepSleepCtrl=S4AndS5` — which together had made that node the least likely of the three to power itself back up after an outage. Nothing was broken and nothing was alarming; it simply differed. That class of problem is invisible without a reference to compare against.
+
 **2. "Nothing in the logs" is itself evidence.** It does not mean nothing happened — it narrows the fault to layers the OS cannot see: firmware, power, and hardware. Time spent grepping logs after that point is wasted.
 
 **3. Rule things out with measurements, not plausibility.** The ASPM warning *looked* like the answer. Checking the other two nodes took thirty seconds and killed it. Do that before building a theory on top.
