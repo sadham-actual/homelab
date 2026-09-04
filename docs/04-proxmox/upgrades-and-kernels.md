@@ -73,6 +73,14 @@ These nodes boot via **GRUB**, not `proxmox-boot-tool` ESP sync. `proxmox-boot-t
 
 If a drop-in exists, editing `/etc/default/grub` does nothing. It will *look* like it worked: the file shows your change and `update-grub` reports `done`, but the generated config keeps the old value.
 
+This cluster consolidated on **`/etc/default/grub` only** (2026-09-04), retiring the user-created drop-ins, so there is one place to look. That is safe here because `/etc/default/grub` is **not a dpkg conffile** on these systems — no package owns it, so upgrades never replace or prompt for it. Verify before relying on that elsewhere:
+
+```bash
+dpkg -S /etc/default/grub          # no match = unmanaged, safe to own
+```
+
+The package-owned `proxmox-ve.cfg` drop-in stays — it belongs to `proxmox-ve` and would be restored on upgrade regardless.
+
 **Never trust the source file.** Always confirm the generated result:
 
 ```bash
@@ -88,7 +96,7 @@ grep -oE "gnulinux-advanced-[a-f0-9-]+" /boot/grub/grub.cfg | head -1   # submen
 grep -oE "gnulinux-[0-9][^\"']*-advanced-[a-f0-9-]+" /boot/grub/grub.cfg  # entry ids
 ```
 
-Then write it to whichever location that node uses, run `update-grub`, and verify as above.
+Write it to `GRUB_DEFAULT` in `/etc/default/grub`, run `update-grub`, and verify against the generated config as above.
 
 ### Why pin at all
 
