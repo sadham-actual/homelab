@@ -137,23 +137,132 @@ pct destroy 999 --purge 1
 | Account DB vs live | byte-identical (sha256 match) |
 | Budget DB vs live | differed as expected — live had advanced since the snapshot |
 
-## Known gap: failures are silent
+## Notifications
 
-The job notifies the built-in `mail-to-root` target, but the nodes have **no relayhost, no `root` alias in `/etc/aliases`, and no local mailbox**. Mail goes nowhere. A failing 02:00 job — TrueNAS down, share missing, pool full — produces no signal at all.
+Two distinct failure modes need catching, and most setups only handle the first:
 
-Check the delivery path before trusting it:
+| Failure mode | Caught by |
+|---|---|
+| Job **runs and fails** — NAS down, share gone, pool full | Proxmox notification target |
+| Job **never runs at all** — scheduler broken, node off, cluster unquorate | *Nothing.* Silence looks exactly like success. |
+
+The second needs a dead-man's switch: something that expects a heartbeat and complains when it stops arriving.
+
+### Proxmox notification target (Discord webhook)
+
+Proxmox VE 9 supports four target types: `gotify`, `sendmail`, `smtp`, `webhook`.
+
+The Discord webhook URL is `https://discord.com/api/webhooks/<id>/<token>`. Register it so the **token stays out of the world-readable config** — Proxmox interpolates `{{ secrets.token }}` in the URL from its private store:
+
+```bash
+BODY='{"username":"Proxmox","embeds":[{"title":{{ json title }},"description":{{ json message }}}]}'
+
+pvesh create /cluster/notifications/endpoints/webhook \
+  --name discord --method post \
+  --url "https://discord.com/api/webhooks/<id>/{{ secrets.token }}" \
+  --secret "name=token,value=$(printf %s "<token>" | base64 -w0)" \
+  --header "name=Content-Type,value=$(printf %s application/json | base64 -w0)" \
+  --body "$(printf %s "$BODY" | base64 -w0)"
+```
+
+`--body`, `--header` values and `--secret` values are all **base64-encoded**.
+
+Use the `{{ json ... }}` template helper rather than raw interpolation. It emits a fully-quoted JSON value, so quotes and newlines in vzdump output cannot break the payload — `vzdump` messages are multi-line and would otherwise produce invalid JSON.
+
+Result: `/etc/pve/notifications.cfg` contains only the templated URL; the token lives in `/etc/pve/priv/notifications.cfg` (mode 0600).
+
+Test it — note the path is `/targets/`, not `/endpoints/webhook/<name>/`:
+
+```bash
+pvesh create /cluster/notifications/targets/discord/test
+```
+
+Discord returns **HTTP 204** on success. A rejected payload shows up in `journalctl`.
+
+### Matcher: failures only
+
+```bash
+pvesh create /cluster/notifications/matchers \
+  --name backup-alerts \
+  --match-severity error --match-severity warning \
+  --target discord
+```
+
+**Do not route all severities.** A successful-backup message every night at 02:00 trains you to ignore the channel, and then you miss the one that matters. A message arriving should always mean something needs attention.
+
+The built-in `default-matcher` still routes everything to `mail-to-root`, which goes nowhere on these nodes (no relayhost, no root alias, no local mailbox). Harmless, left in place. Verify your own mail path before relying on it:
 
 ```bash
 postconf -h relayhost        # empty = mail is going nowhere
 grep '^root' /etc/aliases    # no alias = nothing forwarded
 ```
 
-Until a real SMTP or webhook notification target is configured, verify manually:
+### Weekly heartbeat
+
+`/usr/local/bin/pve-backup-heartbeat.sh`, run by `pve-backup-heartbeat.timer` (Mondays 09:00, `Persistent=true` so a powered-off node still reports once back).
+
+It reads the webhook URL *and* token out of Proxmox's own config, so the secret exists in exactly one place on disk. It reports the newest backup age per guest and flags anything older than 48 hours — so it is both a liveness signal and a coarse staleness check.
+
+### Dead-man's switch (Uptime Kuma push monitor)
+
+The notification target and the weekly heartbeat both still leave a gap: if the backup job silently stops running, the weekly heartbeat only surfaces it up to seven days later. A push monitor narrows that to one day.
+
+Create a **Push** monitor in Uptime Kuma:
+
+| Field | Value |
+|---|---|
+| Monitor Type | Push |
+| Heartbeat Interval | `93600` (26 hours) |
+| Retries | 0 |
+
+**Use 26 hours, not 24.** The job runs at 02:00 and pushes on completion, so heartbeats land ~24h apart *exactly*. A 24-hour interval false-alarms on any drift (a slow backup, a delayed start); 26 hours absorbs that while still catching a genuinely missed night.
+
+Store the push URL where only root can read it — `/etc/pve/priv/` is cluster-replicated, so one write covers every node:
 
 ```bash
-# Did last night's run actually produce files?
-ls -lht /mnt/pve/pvebackup/dump/ | head
+printf %s "http://<kuma-host>:3001/api/push/<token>" > /etc/pve/priv/kuma-push-url
+chmod 600 /etc/pve/priv/kuma-push-url
 ```
+
+Then attach the hook script to the job (`/usr/local/bin/vzdump-kuma-hook.sh`, which must be copied to **every** node — `/usr/local/bin` is not cluster-replicated):
+
+```bash
+JOB=$(awk '/^vzdump:/{print $2}' /etc/pve/jobs.cfg)
+pvesh set /cluster/backup/$JOB --script /usr/local/bin/vzdump-kuma-hook.sh
+```
+
+#### The trap: guestless nodes report success too
+
+With `--all 1`, **every node runs the backup job** — including nodes with no guests, which log `Backup job finished successfully` after backing up nothing:
+
+```text
+pve-3000 pvescheduler: INFO: starting new backup job: vzdump ... --all 1
+pve-3000 pvescheduler: INFO: Backup job finished successfully
+```
+
+A naive hook that pushes on `job-end` would therefore have idle nodes satisfying the heartbeat every night, keeping the monitor green even if the node holding the guests stopped backing up entirely — silently inverting the purpose of the check.
+
+The hook guards against this with a marker file: `backup-end` (a guest was actually backed up) creates it, and `job-end` only pushes if it exists. A node with nothing to back up stays silent.
+
+```bash
+case "$phase" in
+  job-start)     rm -f "$MARKER" ;;
+  backup-end)    touch "$MARKER" ;;                 # real work happened
+  job-end)       [ -e "$MARKER" ] && { push up "..."; rm -f "$MARKER"; } ;;
+  job-abort)     push down "backup job ABORTED on $(hostname)" ;;
+  backup-abort)  push down "backup of guest ${VMID:-unknown} ABORTED" ;;
+esac
+```
+
+The hook also **exits 0 unconditionally** and uses a 10-second curl timeout. Monitoring must never become a failure mode for the thing it monitors — a down or slow Kuma must not break or delay a backup.
+
+### Summary of layers
+
+| Layer | Catches | Latency |
+|---|---|---|
+| Discord webhook target | job ran and failed | immediate |
+| Uptime Kuma push monitor | job silently stopped running | ~1 day |
+| Weekly heartbeat | pipeline liveness + stale backups | ~1 week |
 
 ## Restore-from-scratch notes
 
@@ -165,4 +274,4 @@ If restoring after losing a node entirely:
 
 ---
 
-*Last Updated: 2026-09-03*
+*Last Updated: 2026-09-04*
