@@ -208,7 +208,7 @@ VMs, containers, and server applications. The "production" environment for migra
 - *arr stack (Sonarr, Radarr, etc.)
 - qBittorrent (downloads)
 - n8n (automation)
-- Tracktor (package tracking)
+- Tracktor (vehicle fuel/maintenance tracking)
 - Kubernetes workloads
 - Future: Additional migrated services
 

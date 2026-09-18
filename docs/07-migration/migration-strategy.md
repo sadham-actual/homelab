@@ -405,7 +405,7 @@ Services with some risk:
 ### Low-Risk Migrations
 Services safe to migrate:
 1. **Uptime Kuma** - Monitoring tool, non-critical
-2. **Tracktor** - Package tracking, minimal state
+2. **Tracktor** - Vehicle fuel/maintenance log; small but real SQLite state, back up `tank/configs/tracktor` first
 3. **Navidrome** - Music streaming, alternative to Jellyfin
 
 **Mitigation:**

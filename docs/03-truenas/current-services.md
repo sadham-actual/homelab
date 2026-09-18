@@ -83,7 +83,7 @@ Newer additions not previously documented, also under `tank/configs/`:
 - **Ollama** (TrueNAS App) + **Open WebUI** (TrueNAS App) — local LLM runtime and chat frontend; see [Local AI Stack](#local-ai-stack-ollama--open-webui) below
 - **OctoPrint** (dockge) — controls the Elegoo Centauri Carbon 3D printer over IP
 - **Jellyseerr / Ombi** (dockge, `seerr`/`ombi` stacks) — media request interfaces; still redundant with each other, not yet consolidated
-- **Tracktor** (dockge) — package tracking, exposed at `tracktor.example.com`
+- **Tracktor** (dockge) — vehicle fuel-economy and maintenance log, exposed at `tracktor.example.com`; persistent SQLite database under `tank/configs/tracktor`
 - **Releasarr** (dockge) — release notifications
 - **Auto-limit** (dockge) — automated `*arr` rate limiting
 - **Uptime Kuma** (dockge) — service monitoring
