@@ -28,6 +28,10 @@ Numbered `docs/` subfolders are referenced by number in the README's "Documentat
 - ADRs are immutable once accepted. To change a decision, write a new ADR and mark the old one "Superseded by ADR-XXXX" — never edit an accepted ADR's decision in place.
 - Only write an ADR for decisions with real trade-offs worth remembering later, not trivial or obvious choices.
 
+## Relationship to the private vault
+
+A private Obsidian vault (`~/Brain`, its own private repo) holds the unsanitized version of everything: real addresses, hostnames, service tags, and the personal/non-homelab notes. Knowledge flows **one way, vault → this repo**, and only by rewriting through the sanitization rules below — never by copy-paste. Nothing in this repo links into the vault, and nothing from the vault is committed here verbatim.
+
 ## Content conventions
 
 - **Sanitize all examples — THIS REPO IS PUBLIC**: use placeholder IPs (`192.168.1.x` / `10.0.0.x`), internal domains as `example.local`, external as `example.com`, hostnames generic-but-descriptive (`truenas-01`, `pve-node-01`). Never commit anything identifying: real public IPs, your real domain, your real internal LAN subnet, personal name/email, credentials, tokens, or API keys.
