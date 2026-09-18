@@ -1,5 +1,10 @@
 # Service Migration Strategy
 
+> **Status: mostly planned.** One LXC (Actual Budget) has moved to the Proxmox
+> cluster. Everything else described here is still on TrueNAS, and two of the
+> three cluster nodes carry no workloads. Treat this as the plan and the
+> reasoning behind it rather than a record of what has happened.
+
 ## Migration Philosophy
 
 **Guiding Principles:**

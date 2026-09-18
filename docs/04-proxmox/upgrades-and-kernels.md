@@ -6,7 +6,7 @@ How package upgrades are applied across the cluster, and how the boot kernel is 
 
 ### Use `dist-upgrade`, not `upgrade`
 
-Plain `apt upgrade` holds back Proxmox packages whose dependencies changed — 11 to 18 per node in practice, including `pve-manager`, `pve-container`, `qemu-server`, `libpve-*` and the kernel metapackages. That leaves the node half-upgraded, with the web UI on one version and libraries on another.
+Plain `apt upgrade` holds back Proxmox packages whose dependencies changed, 11 to 18 per node in practice, including `pve-manager`, `pve-container`, `qemu-server`, `libpve-*` and the kernel metapackages. That leaves the node half-upgraded, with the web UI on one version and libraries on another.
 
 ```bash
 apt-get update
@@ -17,7 +17,7 @@ Read the simulation before running it for real. The lines that matter:
 
 | Line | Meaning |
 |------|---------|
-| `Remv` | something is being **removed** — read every one of these |
+| `Remv` | something is being **removed**: read every one of these |
 | `Inst proxmox-kernel-*` | a new kernel is being installed (does not remove old ones) |
 | `N upgraded, N newly installed, N to remove` | the headline |
 
@@ -29,7 +29,7 @@ DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y \
   -o Dpkg::Options::="--force-confdef"
 ```
 
-`--force-confold` keeps existing config files when a package ships a new version. On a cluster this is the safe default — an overwritten `corosync.conf` or network config is far worse than a slightly stale one. Review `.dpkg-dist` leftovers afterwards if you care.
+`--force-confold` keeps existing config files when a package ships a new version. On a cluster this is the safe default. An overwritten `corosync.conf` or network config is far worse than a slightly stale one. Review `.dpkg-dist` leftovers afterwards if you care.
 
 ### Order matters
 
@@ -39,7 +39,7 @@ DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y \
 2. Idle node → verify → next
 3. Node hosting guests **last**
 
-Running guests are **not** interrupted by the upgrade. A VM keeps its existing QEMU process (and therefore the old QEMU binary) until it is stopped and started — a guest reboot is not enough. Verify with the PID:
+Running guests are **not** interrupted by the upgrade. A VM keeps its existing QEMU process (and therefore the old QEMU binary) until it is stopped and started; a guest reboot is not enough. Verify with the PID:
 
 ```bash
 qm list      # PID should be unchanged after the upgrade
@@ -56,11 +56,11 @@ for s in pve-cluster corosync pvedaemon pveproxy pvestatd \
 done
 ```
 
-One peer-loss event per node in the corosync log is expected — that is corosync restarting during its own upgrade.
+One peer-loss event per node in the corosync log is expected. That is corosync restarting during its own upgrade.
 
 ## Kernel pinning
 
-These nodes boot via **GRUB**, not `proxmox-boot-tool` ESP sync. `proxmox-boot-tool kernel pin` writes `/etc/kernel/proxmox-boot-pin`, but **nothing reads it here** — it has no effect.
+These nodes boot via **GRUB**, not `proxmox-boot-tool` ESP sync. `proxmox-boot-tool kernel pin` writes `/etc/kernel/proxmox-boot-pin`, but **nothing reads it here**, so it has no effect.
 
 ### The trap: where the pin actually lives
 
@@ -69,17 +69,17 @@ These nodes boot via **GRUB**, not `proxmox-boot-tool` ESP sync. `proxmox-boot-t
 | Location | Precedence |
 |---|---|
 | `/etc/default/grub` | base |
-| `/etc/default/grub.d/*.cfg` | **sourced afterwards — overrides the above** |
+| `/etc/default/grub.d/*.cfg` | **sourced afterwards, overrides the above** |
 
 If a drop-in exists, editing `/etc/default/grub` does nothing. It will *look* like it worked: the file shows your change and `update-grub` reports `done`, but the generated config keeps the old value.
 
-This cluster consolidated on **`/etc/default/grub` only** (2026-09-04), retiring the user-created drop-ins, so there is one place to look. That is safe here because `/etc/default/grub` is **not a dpkg conffile** on these systems — no package owns it, so upgrades never replace or prompt for it. Verify before relying on that elsewhere:
+This cluster consolidated on **`/etc/default/grub` only** (2026-09-04), retiring the user-created drop-ins, so there is one place to look. That is safe here because `/etc/default/grub` is **not a dpkg conffile** on these systems. No package owns it, so upgrades never replace or prompt for it. Verify before relying on that elsewhere:
 
 ```bash
 dpkg -S /etc/default/grub          # no match = unmanaged, safe to own
 ```
 
-The package-owned `proxmox-ve.cfg` drop-in stays — it belongs to `proxmox-ve` and would be restored on upgrade regardless.
+The package-owned `proxmox-ve.cfg` drop-in stays, since it belongs to `proxmox-ve` and would be restored on upgrade regardless.
 
 **Never trust the source file.** Always confirm the generated result:
 
@@ -100,7 +100,7 @@ Write it to `GRUB_DEFAULT` in `/etc/default/grub`, run `update-grub`, and verify
 
 ### Why pin at all
 
-`GRUB_DEFAULT=0` means "first menu entry", which is the **newest installed kernel**. That is fine until an upgrade installs a kernel you have never booted — then the next reboot, quite possibly an unattended one after a power cut, silently becomes that kernel's first boot on that hardware.
+`GRUB_DEFAULT=0` means "first menu entry", which is the **newest installed kernel**. That is fine until an upgrade installs a kernel you have never booted. Then the next reboot, quite possibly an unattended one after a power cut, silently becomes that kernel's first boot on that hardware.
 
 A pin makes the boot kernel an explicit decision. Two ways to use it:
 
@@ -113,7 +113,7 @@ Move the pin *after* validating, not before, unless you accept that the next boo
 
 Pick it from the GRUB menu at the console rather than pinning it first. If it fails, power-cycle and the pin brings back the known-good kernel automatically.
 
-Do **not** use `grub-reboot` one-shots on these nodes — `grubenv` sits on LVM, so the one-shot is sticky rather than self-clearing.
+Do **not** use `grub-reboot` one-shots on these nodes: `grubenv` sits on LVM, so the one-shot is sticky rather than self-clearing.
 
 ### Menu timeout: fast normally, generous on failure
 
@@ -122,8 +122,8 @@ A 5-second menu is regularly missed, because a monitor often has not finished sy
 GRUB distinguishes the two cases via its `recordfail` flag:
 
 ```bash
-GRUB_TIMEOUT=5                # normal boot — quick
-GRUB_RECORDFAIL_TIMEOUT=30    # after a FAILED boot — time to pick a fallback
+GRUB_TIMEOUT=5                # normal boot, quick
+GRUB_RECORDFAIL_TIMEOUT=30    # after a FAILED boot, time to pick a fallback
 ```
 
 That gives a long menu exactly when a fallback kernel is needed, and a short one the rest of the time.
@@ -136,7 +136,7 @@ sed -n '86p;90p' /boot/grub/grub.cfg    # recordfail path / normal path
 
 ### Keep fallback kernels installed
 
-Proxmox kernel metapackage upgrades install alongside, they do not remove. That accumulation is a feature — every previously-working kernel stays selectable from the menu. Check `/boot` space occasionally rather than pruning reflexively; these nodes have tens of GB free.
+Proxmox kernel metapackage upgrades install alongside, they do not remove. That accumulation is a feature: every previously-working kernel stays selectable from the menu. Check `/boot` space occasionally rather than pruning reflexively; these nodes have tens of GB free.
 
 ## Result of the 2026-09-04 upgrade
 
@@ -146,7 +146,7 @@ All three nodes went from PVE 9.1.x to **9.2.11 / proxmox-ve 9.2.0** and converg
 |---|---|
 | Packages | 180–215 per node, 0 removed (except one ZFS library transition) |
 | Failed units afterwards | 0 on all three |
-| Guests | never restarted — same PID throughout |
+| Guests | never restarted, same PID throughout |
 | Quorum | 3/3 maintained, one expected corosync blip per node |
 | Reboots | 3, **zero unsafe shutdowns** |
 

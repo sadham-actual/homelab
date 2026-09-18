@@ -1,10 +1,15 @@
 # VLAN Design and Architecture
 
+> **Status: designed, not built.** Nothing in this document is running. The
+> network today is a single flat `192.168.1.0/24` subnet on consumer mesh
+> hardware, described in [Current Setup](current-setup.md). This is the target
+> design, blocked on an OPNsense router and a managed switch that have not
+> been bought. Subnets, VLAN IDs and firewall rules here are proposals.
+
 ## Overview
 
-This document outlines the future network design with proper segmentation using VLANs (Virtual Local Area Networks). This architecture will be implemented in Phase 8 of the migration strategy after OPNsense deployment.
-
-**Current State:** Single flat network (192.168.1.0/24)
+This document sets out the segmented network to build after OPNsense is
+deployed. It is Phase 8 of the migration strategy.
 
 **Future State:** Segmented network with 5 VLANs for security, performance, and organization
 

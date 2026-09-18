@@ -43,7 +43,7 @@ midclt call sharing.nfs.create '{"path":"/mnt/tank/pvebackup",
   "comment":"Proxmox vzdump backups","enabled":true}'
 ```
 
-`mapall_user: root` is **required**. Without it NFS squashes root and `vzdump` cannot write its dumps — the job fails with permission errors that look unrelated to NFS.
+`mapall_user: root` is **required**. Without it NFS squashes root and `vzdump` cannot write its dumps. The job fails with permission errors that look unrelated to NFS.
 
 ### 3. Register as cluster storage
 
@@ -75,7 +75,7 @@ The resulting job lands in `/etc/pve/jobs.cfg`.
 
 ## Verifying a backup
 
-Exit code 0 is not proof. Verify at three levels — the file exists, the archive is readable, and the data inside is sound.
+Exit code 0 is not proof. Verify at three levels: the file exists, the archive is readable, and the data inside is sound.
 
 ```bash
 # 1. Proxmox sees the backup
@@ -84,11 +84,11 @@ pvesm list pvebackup
 # 2. Files actually landed (check from the NAS side, independently)
 ls -lh /mnt/tank/pvebackup/dump/
 
-# 3. Archive is not truncated — decompresses cleanly end to end
+# 3. Archive is not truncated: decompresses cleanly end to end
 zstd -t /mnt/tank/pvebackup/dump/vzdump-lxc-103-*.tar.zst
 ```
 
-`zstd -t` prints the decompressed byte count. Compare it against `Total bytes written` in the matching `.log` file — they should agree exactly.
+`zstd -t` prints the decompressed byte count. Compare it against `Total bytes written` in the matching `.log` file. They should agree exactly.
 
 ## Restore test
 
@@ -132,10 +132,10 @@ pct destroy 999 --purge 1
 | Check | Result |
 |-------|--------|
 | Archive integrity (`zstd -t`) | clean, both guests |
-| Restore extraction | 2,179,911,680 bytes — matched backup log exactly |
+| Restore extraction | 2,179,911,680 bytes, matched backup log exactly |
 | `PRAGMA integrity_check` | `ok` on both databases |
 | Account DB vs live | byte-identical (sha256 match) |
-| Budget DB vs live | differed as expected — live had advanced since the snapshot |
+| Budget DB vs live | differed as expected; live had advanced since the snapshot |
 
 ## Notifications
 
@@ -143,8 +143,8 @@ Two distinct failure modes need catching, and most setups only handle the first:
 
 | Failure mode | Caught by |
 |---|---|
-| Job **runs and fails** — NAS down, share gone, pool full | Proxmox notification target |
-| Job **never runs at all** — scheduler broken, node off, cluster unquorate | *Nothing.* Silence looks exactly like success. |
+| Job **runs and fails**: NAS down, share gone, pool full | Proxmox notification target |
+| Job **never runs at all**: scheduler broken, node off, cluster unquorate | *Nothing.* Silence looks exactly like success. |
 
 The second needs a dead-man's switch: something that expects a heartbeat and complains when it stops arriving.
 
@@ -152,7 +152,7 @@ The second needs a dead-man's switch: something that expects a heartbeat and com
 
 Proxmox VE 9 supports four target types: `gotify`, `sendmail`, `smtp`, `webhook`.
 
-The Discord webhook URL is `https://discord.com/api/webhooks/<id>/<token>`. Register it so the **token stays out of the world-readable config** — Proxmox interpolates `{{ secrets.token }}` in the URL from its private store:
+The Discord webhook URL is `https://discord.com/api/webhooks/<id>/<token>`. Register it so the **token stays out of the world-readable config**. Proxmox interpolates `{{ secrets.token }}` in the URL from its private store:
 
 ```bash
 BODY='{"username":"Proxmox","embeds":[{"title":{{ json title }},"description":{{ json message }}}]}'
@@ -167,11 +167,11 @@ pvesh create /cluster/notifications/endpoints/webhook \
 
 `--body`, `--header` values and `--secret` values are all **base64-encoded**.
 
-Use the `{{ json ... }}` template helper rather than raw interpolation. It emits a fully-quoted JSON value, so quotes and newlines in vzdump output cannot break the payload — `vzdump` messages are multi-line and would otherwise produce invalid JSON.
+Use the `{{ json ... }}` template helper rather than raw interpolation. It emits a fully-quoted JSON value, so quotes and newlines in vzdump output cannot break the payload. `vzdump` messages are multi-line and would otherwise produce invalid JSON.
 
 Result: `/etc/pve/notifications.cfg` contains only the templated URL; the token lives in `/etc/pve/priv/notifications.cfg` (mode 0600).
 
-Test it — note the path is `/targets/`, not `/endpoints/webhook/<name>/`:
+Test it. Note the path is `/targets/`, not `/endpoints/webhook/<name>/`:
 
 ```bash
 pvesh create /cluster/notifications/targets/discord/test
@@ -201,7 +201,7 @@ grep '^root' /etc/aliases    # no alias = nothing forwarded
 
 `/usr/local/bin/pve-backup-heartbeat.sh`, run by `pve-backup-heartbeat.timer` (Mondays 09:00, `Persistent=true` so a powered-off node still reports once back).
 
-It reads the webhook URL *and* token out of Proxmox's own config, so the secret exists in exactly one place on disk. It reports the newest backup age per guest and flags anything older than 48 hours — so it is both a liveness signal and a coarse staleness check.
+It reads the webhook URL *and* token out of Proxmox's own config, so the secret exists in exactly one place on disk. It reports the newest backup age per guest and flags anything older than 48 hours, so it is both a liveness signal and a coarse staleness check.
 
 ### Dead-man's switch (Uptime Kuma push monitor)
 
@@ -217,14 +217,14 @@ Create a **Push** monitor in Uptime Kuma:
 
 **Use 26 hours, not 24.** The job runs at 02:00 and pushes on completion, so heartbeats land ~24h apart *exactly*. A 24-hour interval false-alarms on any drift (a slow backup, a delayed start); 26 hours absorbs that while still catching a genuinely missed night.
 
-Store the push URL where only root can read it — `/etc/pve/priv/` is cluster-replicated, so one write covers every node:
+Store the push URL where only root can read it. `/etc/pve/priv/` is cluster-replicated, so one write covers every node:
 
 ```bash
 printf %s "http://<kuma-host>:3001/api/push/<token>" > /etc/pve/priv/kuma-push-url
 chmod 600 /etc/pve/priv/kuma-push-url
 ```
 
-Then attach the hook script to the job (`/usr/local/bin/vzdump-kuma-hook.sh`, which must be copied to **every** node — `/usr/local/bin` is not cluster-replicated):
+Then attach the hook script to the job (`/usr/local/bin/vzdump-kuma-hook.sh`, which must be copied to **every** node, since `/usr/local/bin` is not cluster-replicated):
 
 ```bash
 JOB=$(awk '/^vzdump:/{print $2}' /etc/pve/jobs.cfg)
@@ -233,14 +233,14 @@ pvesh set /cluster/backup/$JOB --script /usr/local/bin/vzdump-kuma-hook.sh
 
 #### The trap: guestless nodes report success too
 
-With `--all 1`, **every node runs the backup job** — including nodes with no guests, which log `Backup job finished successfully` after backing up nothing:
+With `--all 1`, **every node runs the backup job**, including nodes with no guests, which log `Backup job finished successfully` after backing up nothing:
 
 ```text
 pve-3000 pvescheduler: INFO: starting new backup job: vzdump ... --all 1
 pve-3000 pvescheduler: INFO: Backup job finished successfully
 ```
 
-A naive hook that pushes on `job-end` would therefore have idle nodes satisfying the heartbeat every night, keeping the monitor green even if the node holding the guests stopped backing up entirely — silently inverting the purpose of the check.
+A naive hook that pushes on `job-end` would therefore have idle nodes satisfying the heartbeat every night, keeping the monitor green even if the node holding the guests stopped backing up entirely, silently inverting the purpose of the check.
 
 The hook guards against this with a marker file: `backup-end` (a guest was actually backed up) creates it, and `job-end` only pushes if it exists. A node with nothing to back up stays silent.
 
@@ -254,7 +254,7 @@ case "$phase" in
 esac
 ```
 
-The hook also **exits 0 unconditionally** and uses a 10-second curl timeout. Monitoring must never become a failure mode for the thing it monitors — a down or slow Kuma must not break or delay a backup.
+The hook also **exits 0 unconditionally** and uses a 10-second curl timeout. Monitoring must never become a failure mode for the thing it monitors. A down or slow Kuma must not break or delay a backup.
 
 ### Summary of layers
 
@@ -268,7 +268,7 @@ The hook also **exits 0 unconditionally** and uses a 10-second curl timeout. Mon
 
 If restoring after losing a node entirely:
 
-1. The storage definition lives in `/etc/pve/storage.cfg`, which is cluster-replicated — a surviving node already has it. A fully rebuilt cluster needs `pvesm add nfs ...` re-run (step 3 above).
+1. The storage definition lives in `/etc/pve/storage.cfg`, which is cluster-replicated, so a surviving node already has it. A fully rebuilt cluster needs `pvesm add nfs ...` re-run (step 3 above).
 2. Backups are plain files on the NAS; they survive the loss of every Proxmox node.
 3. `qmrestore` for VMs, `pct restore` for containers.
 

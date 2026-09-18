@@ -6,19 +6,19 @@ The Proxmox VE cluster is named `homelab` and currently has three nodes, all Del
 
 | Node | Model | CPU | RAM | Storage | BIOS | Role |
 |------|-------|-----|-----|---------|------|------|
-| `pve-01` | Dell OptiPlex 3080 Micro | i5-10500T (6C/12T) | 16GB DDR4-2400 | 256GB NVMe | 2.35.0 | Primary — hosts current VMs/LXCs |
-| `pve-02` | Dell OptiPlex 3000 Micro | i5-12500T (6C/12T) | 32GB DDR4-3200 | 512GB NVMe | 1.39.1 | Idle — on a dedicated 100W adapter; see power delivery note below |
+| `pve-01` | Dell OptiPlex 3080 Micro | i5-10500T (6C/12T) | 16GB DDR4-2400 | 256GB NVMe | 2.35.0 | Primary, hosts current VMs/LXCs |
+| `pve-02` | Dell OptiPlex 3000 Micro | i5-12500T (6C/12T) | 32GB DDR4-3200 | 512GB NVMe | 1.39.1 | Idle, on a dedicated 100W adapter; see power delivery note below |
 | `pve-03` | Dell OptiPlex 3080 Micro | i5-10500T (6C/12T) | 16GB DDR4-2666 | 256GB NVMe | 2.35.0 | Idle |
 
-All three nodes: single Gigabit Ethernet NIC, connected to `vmbr0` on the flat `192.168.1.0/24` network (no VLANs yet — see [Networking: Current Setup](../06-networking/current-setup.md)).
+All three nodes: single Gigabit Ethernet NIC, connected to `vmbr0` on the flat `192.168.1.0/24` network (no VLANs yet; see [Networking: Current Setup](../06-networking/current-setup.md)).
 
-**Note on RAM:** Earlier planning docs assumed 40GB on a single node; actual installed RAM (confirmed via `dmidecode`) is 16GB on each 3080 Micro and 32GB on the 3000 Micro. `pve-03` runs mismatched DIMMs (one DDR4-3200, one DDR4-2666) and therefore clocks both at the slower speed — use matched pairs in any future node. The 3080 Micro board supports **64GB max across 2 slots**, so a replacement node need not lose capacity relative to the 3000 Micro.
+**Note on RAM:** Earlier planning docs assumed 40GB on a single node; actual installed RAM (confirmed via `dmidecode`) is 16GB on each 3080 Micro and 32GB on the 3000 Micro. `pve-03` runs mismatched DIMMs (one DDR4-3200, one DDR4-2666) and therefore clocks both at the slower speed. Use matched pairs in any future node. The 3080 Micro board supports **64GB max across 2 slots**, so a replacement node need not lose capacity relative to the 3000 Micro.
 
 ## BIOS
 
 **Software versions (2026-09-04):** all three nodes run **pve-manager 9.2.11 / proxmox-ve 9.2.0** on kernel **7.0.14-15-pve**, with 0 pending updates. See [Upgrades and Kernel Pinning](../04-proxmox/upgrades-and-kernels.md) for the procedure and the pinning traps.
 
-**Keep BIOS versions current and matched.** `pve-01` ran on its factory 1.1.0 (2020) until 2026-09-03, which caused a persistently over-driven cooling fan — audible at idle while running *cooler* than its identically-specced twin. Flashing to 2.35.0 fixed it. Full writeup: [Diagnosing Hardware by Comparison](../10-lessons-learned/diagnosing-hardware-by-comparison.md). Both 3080 Micros are on **2.35.0** as of 2026-09-04; the 3000 Micro is a different platform with its own version line.
+**Keep BIOS versions current and matched.** `pve-01` ran on its factory 1.1.0 (2020) until 2026-09-03, which caused a persistently over-driven cooling fan, audible at idle while running *cooler* than its identically-specced twin. Flashing to 2.35.0 fixed it. Full writeup: [Diagnosing Hardware by Comparison](../10-lessons-learned/diagnosing-hardware-by-comparison.md). Both 3080 Micros are on **2.35.0** as of 2026-09-04; the 3000 Micro is a different platform with its own version line.
 
 Both flashes raised idle temperature (`pve-01` 33→45 °C, `pve-03` 35→39 °C) because the newer fan curve stops over-cooling. **A higher idle temperature is the expected result**, not a regression.
 
@@ -35,7 +35,7 @@ done > bios-baseline.txt
 
 ### After a flash: diff, don't eyeball
 
-Re-dump and `diff` against the baseline. **This is the reliable check** — reading a BIOS menu by hand is how settings get missed. (The `Integrated NIC` entry was initially left off a hand-written checklist; disabling it would have left a headless node unreachable.)
+Re-dump and `diff` against the baseline. **This is the reliable check.** Reading a BIOS menu by hand is how settings get missed. (The `Integrated NIC` entry was initially left off a hand-written checklist; disabling it would have left a headless node unreachable.)
 
 ```bash
 diff bios-baseline.txt bios-after.txt
@@ -45,7 +45,7 @@ Expect zero differences other than ones you made deliberately. `pve-03`'s 2.34.0
 
 ### What to verify, by consequence
 
-**Tier 1 — node won't work or won't be reachable:**
+**Tier 1, node won't work or won't be reachable:**
 
 | Setting | Value | If wrong |
 |---|---|---|
@@ -56,16 +56,16 @@ Expect zero differences other than ones you made deliberately. `pve-03`'s 2.34.0
 | `EmbSataRaid` (SATA Operation) | Ahci | disk may not be found |
 | `M2PcieSsd2` | Enabled | NVMe not detected |
 
-**Tier 2 — boots but degraded:** `LogicProc` (Hyper-Threading) Enabled, `CpuCore` CoresAll, `SecureBoot` Disabled, `DustFilter` **Disabled** (enabling it deliberately raises fan speed).
+**Tier 2, boots but degraded:** `LogicProc` (Hyper-Threading) Enabled, `CpuCore` CoresAll, `SecureBoot` Disabled, `DustFilter` **Disabled** (enabling it deliberately raises fan speed).
 
-**Tier 3 — power-cut recovery.** These decide whether a node comes back by itself, which matters most if there is no UPS:
+**Tier 3, power-cut recovery.** These decide whether a node comes back by itself, which matters most if there is no UPS:
 
 | Setting | Value | Why |
 |---|---|---|
-| `AcPwrRcvry` | **On** | `Last` only restores the *previous* state — a node that was off when power died stays off |
+| `AcPwrRcvry` | **On** | `Last` only restores the *previous* state, so a node that was off when power died stays off |
 | `DeepSleepCtrl` | **Disabled** | Deep Sleep blocks Wake-on-LAN and can interfere with AC recovery |
 
-`pve-03` was found on `AcPwrRcvry=Last` and `DeepSleepCtrl=S4AndS5` — pre-existing drift, not caused by any flash, which had quietly made it the node least likely to self-recover from an outage. Both were corrected during the 2026-09-04 flash.
+`pve-03` was found on `AcPwrRcvry=Last` and `DeepSleepCtrl=S4AndS5`, pre-existing drift not caused by any flash, which had quietly made it the node least likely to self-recover from an outage. Both were corrected during the 2026-09-04 flash.
 
 ### Comparing nodes surfaces drift
 
@@ -83,9 +83,9 @@ That is how the `AcPwrRcvry` / `DeepSleepCtrl` drift above was found. Worth runn
 
 ### Recurrence 2026-09-03
 
-`pve-02` was at some point moved back onto the shared 65W rig, and the fault returned exactly as ADR-0102 predicted. Four consecutive boot attempts collapsed — `journalctl --list-boots` recorded four boots that **started and ended in the same second** — on both the newer kernel *and* the known-good fallback, confirming the failure is power, not software. A 100W adapter booted it first try. Cost: 7 additional unsafe shutdowns.
+`pve-02` was at some point moved back onto the shared 65W rig, and the fault returned exactly as ADR-0102 predicted. Four consecutive boot attempts collapsed, with `journalctl --list-boots` recording four boots that **started and ended in the same second**, on both the newer kernel *and* the known-good fallback, confirming the failure is power, not software. A 100W adapter booted it first try. Cost: 7 additional unsafe shutdowns.
 
-The same root cause also explains the node's ~20/day corosync ring flaps, previously tracked as an unrelated network problem. Brief voltage sags stall CPU and NIC together for a few hundred milliseconds — invisible to every log, indifferent to corosync's realtime priority. See [Diagnosing Hardware by Comparison](../10-lessons-learned/diagnosing-hardware-by-comparison.md).
+The same root cause also explains the node's ~20/day corosync ring flaps, previously tracked as an unrelated network problem. Brief voltage sags stall CPU and NIC together for a few hundred milliseconds, invisible to every log, indifferent to corosync's realtime priority. See [Diagnosing Hardware by Comparison](../10-lessons-learned/diagnosing-hardware-by-comparison.md).
 
 ### Confirmed fixed 2026-09-04
 
@@ -95,9 +95,9 @@ After 11.3 hours on the 100W adapter:
 |---|---|---|
 | Corosync ring flaps | ~20/day (~9.6 expected in this window) | **0** |
 | TOTEM retransmits | ~290/day | **0** |
-| Kernel link-down events | — | **0** |
+| Kernel link-down events | n/a | **0** |
 
-Corroborated independently from all three nodes — `pve-01` and `pve-03` previously logged 24 and 38 `host: 2 link: 0 is down` events per day respectively, and now log zero. A 5/sec ping monitor recorded 201,547 replies with no timeouts. At the old rate, observing zero flaps in this window has a probability of roughly 1 in 14,000.
+Corroborated independently from all three nodes. `pve-01` and `pve-03` previously logged 24 and 38 `host: 2 link: 0 is down` events per day respectively, and now log zero. A 5/sec ping monitor recorded 201,547 replies with no timeouts. At the old rate, observing zero flaps in this window has a probability of roughly 1 in 14,000.
 
 Verify the count any time with:
 
@@ -106,14 +106,14 @@ Verify the count any time with:
 journalctl -u corosync --since "<test start>" | grep -c "has no active links"
 ```
 
-**Attribution — resolved 2026-09-04.** The initial window changed adapter *and* kernel together, so it did not isolate the cause on its own. Subsequent evidence does:
+**Attribution, resolved 2026-09-04.** The initial window changed adapter *and* kernel together, so it did not isolate the cause on its own. Subsequent evidence does:
 
-- **Unstable across kernels on the 65W supply** — months of unsafe shutdowns and ~20 flaps/day on 6.14.11-8, and boot brownouts on *both* 6.17.13-21 and the known-good 6.14.11-8 fallback.
-- **Stable across kernels on the 100W supply** — 6.17.13-21 for 13h with zero flaps, then 7.0.14-15 with the same clean result.
+- **Unstable across kernels on the 65W supply**: months of unsafe shutdowns and ~20 flaps/day on 6.14.11-8, and boot brownouts on *both* 6.17.13-21 and the known-good 6.14.11-8 fallback.
+- **Stable across kernels on the 100W supply**: 6.17.13-21 for 13h with zero flaps, then 7.0.14-15 with the same clean result.
 
 The kernel was varied on both sides of the change and made no difference; the adapter did. Combined with the operator's own account that this node has only ever misbehaved while on the custom PDU, **the power supply was the cause**. The kernel-mismatch theory is fully retired.
 
-### Shared-rig headroom — follow-up now answered
+### Shared-rig headroom: follow-up now answered
 
 ADR-0102 left open whether `pve-01`/`pve-03` had adequate headroom on the shared 65W boards. **Measured 2026-09-03 on `pve-03`: yes, with ~14% margin.**
 
@@ -146,9 +146,9 @@ Held 3500 MHz all-core throughout, 74°C, no throttling, no brownout.
 | PL2 burst | 68 W | **77 W** |
 | **Platform idle** | **5.3 W** | **21.8 W** |
 
-The 12th-gen part idles ~16W higher; adding the same ~50W dynamic load puts it near **72W** against a 65W supply, with a PL2 ceiling 9W above it. This quantitatively confirms ADR-0102's planned resolution — replace the 3000 Micro with a matching 3080 Micro rather than redesigning the power rig.
+The 12th-gen part idles ~16W higher; adding the same ~50W dynamic load puts it near **72W** against a 65W supply, with a PL2 ceiling 9W above it. This quantitatively confirms ADR-0102's planned resolution: replace the 3000 Micro with a matching 3080 Micro rather than redesigning the power rig.
 
-**Two caveats on that 14% margin:** `psys` is the CPU's own estimate and excludes PD-board conversion losses, so real draw at the barrel is somewhat higher. And **boot transients cannot be reproduced from inside a running OS** — that is the regime that actually kills the 3000 Micro. The 3080s are proven empirically across many clean boots, so this is not a concern for them, but the stress test validates *running* load, not *starting* load.
+**Two caveats on that 14% margin:** `psys` is the CPU's own estimate and excludes PD-board conversion losses, so real draw at the barrel is somewhat higher. And **boot transients cannot be reproduced from inside a running OS**, and that is the regime that actually kills the 3000 Micro. The 3080s are proven empirically across many clean boots, so this is not a concern for them, but the stress test validates *running* load, not *starting* load.
 
 ## Current Workloads
 
@@ -159,9 +159,9 @@ All current VMs/LXCs run on `pve-01`; `pve-02` and `pve-03` have no workloads as
 | 101 | docker-1 | VM | running | 4 | 8GB | 64GB | Ubuntu 24.04 Server, general-purpose Docker host, `onboot=1` |
 | 103 | actualbudget | LXC | running | 2 | 2GB | 4GB | Debian, unprivileged, deployed via community-scripts.org Proxmox VE script, `onboot=1` |
 
-VM 100 (`openclaw-1`, Ubuntu 24.04 Desktop) was **destroyed 2026-09-03** — an abandoned experiment, reclaiming 40GB. Its user data was archived off the node first.
+VM 100 (`openclaw-1`, Ubuntu 24.04 Desktop) was **destroyed 2026-09-03**, an abandoned experiment, reclaiming 40GB. Its user data was archived off the node first.
 
-Local storage on each node: `local` (directory) + `local-lvm` (LVM-thin). Guest disks are all on node-local LVM-thin — no TrueNAS iSCSI/NFS storage is attached for *running* VMs yet.
+Local storage on each node: `local` (directory) + `local-lvm` (LVM-thin). Guest disks are all on node-local LVM-thin. No TrueNAS iSCSI/NFS storage is attached for *running* VMs yet.
 
 A cluster-wide NFS storage `pvebackup` **is** now attached, pointing at a TrueNAS dataset, used for nightly guest backups. See [Proxmox Backups](../04-proxmox/backups.md) and [ADR-0006](../../decisions/0006-proxmox-backup-strategy.md).
 
@@ -179,15 +179,15 @@ These items from the original hardware plan have not happened yet:
 - TrueNAS iSCSI LUN or NFS mount for **running VM disks** (backup-only NFS storage is now attached; guest disks are still local-lvm)
 - k3s deployment (no Kubernetes installed anywhere in the homelab as of this writing)
 - OPNsense VM / VLAN network migration (still flat `192.168.1.0/24`)
-- Second/third node workload distribution — `pve-02` and `pve-03` are online but idle
+- Second/third node workload distribution: `pve-02` and `pve-03` are online but idle
 
 ## Maintenance Notes
 
 - SSH access: `root@<node-ip>` with key auth (see `~/.ssh/config` aliases `pve-01`/`pve-02`/`pve-03` on the management workstation).
-- Before touching `pve-02`'s boot configuration again, read [ADR-0102](../../decisions/0102-pve-node-power-delivery-fix.md) first — the original ACPI diagnosis was wrong and cost real troubleshooting time. If `pve-02` misbehaves in *any* way — boot failures, cluster instability, unexplained resets — **check what is powering it before troubleshooting software.**
-- **The kernel pin lives in `GRUB_DEFAULT` in `/etc/default/grub` on all three nodes** (consolidated 2026-09-04; the old user-created `grub.d` drop-ins were retired). The only remaining drop-in is the package-owned `proxmox-ve.cfg` — leave it alone. Always verify a pin change against the generated config, not the file you edited: `grep -oE 'set default="gnulinux-advanced[^"]*' /boot/grub/grub.cfg`. Details in [Upgrades and Kernel Pinning](../04-proxmox/upgrades-and-kernels.md).
+- Before touching `pve-02`'s boot configuration again, read [ADR-0102](../../decisions/0102-pve-node-power-delivery-fix.md) first. The original ACPI diagnosis was wrong and cost real troubleshooting time. If `pve-02` misbehaves in *any* way, whether boot failures, cluster instability or unexplained resets, **check what is powering it before troubleshooting software.**
+- **The kernel pin lives in `GRUB_DEFAULT` in `/etc/default/grub` on all three nodes** (consolidated 2026-09-04; the old user-created `grub.d` drop-ins were retired). The only remaining drop-in is the package-owned `proxmox-ve.cfg`. Leave it alone. Always verify a pin change against the generated config, not the file you edited: `grep -oE 'set default="gnulinux-advanced[^"]*' /boot/grub/grub.cfg`. Details in [Upgrades and Kernel Pinning](../04-proxmox/upgrades-and-kernels.md).
 - All three nodes keep a pinned kernel so an unattended power-on always lands somewhere known. Do not use `grub-reboot` one-shots on these nodes: `grubenv` sits on LVM, so they are sticky rather than self-clearing. Pick alternate kernels from the GRUB menu at the console instead.
-- Menu timeouts are `GRUB_TIMEOUT=5` for normal boots plus `GRUB_RECORDFAIL_TIMEOUT=30`, so a long menu appears only after a *failed* boot — which is when a fallback kernel actually needs selecting.
+- Menu timeouts are `GRUB_TIMEOUT=5` for normal boots plus `GRUB_RECORDFAIL_TIMEOUT=30`, so a long menu appears only after a *failed* boot, which is when a fallback kernel actually needs selecting.
 
 ---
 
