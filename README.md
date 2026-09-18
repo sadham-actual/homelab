@@ -1,155 +1,122 @@
-# homelab
-Documentation of my homelab journey. 
-# Homelab Infrastructure Documentation
+# Homelab Infrastructure
 
-Personal homelab for learning enterprise infrastructure, containerization, and networking concepts while preparing for CompTIA Network+, Security+, and Linux+ certifications.
+Documentation of a personal homelab: a TrueNAS SCALE storage server and a
+three-node Proxmox VE cluster running about 30 containerized services. The
+notes here are written as runbooks and architecture decision records rather
+than as a blog, so that a procedure can be followed again later and a past
+decision can be understood without reconstructing the reasoning from scratch.
 
-## Overview
+Everything is sanitized for public reading. See [Conventions](#conventions).
 
-This homelab consists of:
-- **TrueNAS SCALE** - Centralized storage and current service host
-- **Proxmox VE** - 3-node cluster for VMs and future Kubernetes cluster (mostly idle capacity currently)
-- **Future OPNsense** - Network segmentation and security (planned)
-- **Raspberry Pi nodes** - Edge services and high availability (planned)
+## What is running
 
-## Current State
+**TrueNAS SCALE** on a Xeon W-1370 with 32GB RAM. Storage is a 3x4TB RAIDZ1
+pool plus cache and boot devices. It hosts roughly 30 services across TrueNAS
+Apps and Docker Compose stacks managed through Dockge, including Jellyfin with
+hardware transcoding, Immich over 80k photos, Nginx Proxy Manager, Pi-hole,
+Tailscale, and a local Ollama and Open WebUI stack on an RTX 3060.
 
-### Hardware
-- **TrueNAS Server**: Xeon W-1370, 32GB RAM, 3x 4TB RAIDZ1 + cache/boot drives
-- **Proxmox Cluster**: 3x Dell OptiPlex Micro nodes (2x 3080 Micro/i5-10500T/16GB, 1x 3000 Micro/i5-12500T/32GB) — see [Proxmox Cluster Hardware](docs/02-hardware/proxmox-node.md)
-- **Edge Nodes**: 2x Raspberry Pi 4, 1x Pi Zero 2W (available for deployment, not yet deployed)
+**Proxmox VE cluster** across three Dell OptiPlex Micro nodes: two 3080 Micros
+(i5-10500T, 16GB) and one 3000 Micro (i5-12500T, 32GB) that is slated for
+replacement after a power delivery fault documented in
+[ADR-0102](decisions/0102-pve-node-power-delivery-fix.md). Guests are a Docker
+host VM and an Actual Budget LXC, backed up nightly to TrueNAS over NFS. Most
+cluster capacity is still idle.
 
-### Services (~30 running on TrueNAS)
-See [Current Services](docs/03-truenas/current-services.md) for complete inventory.
+**Network** is a single flat subnet on TP-Link Deco mesh today, with external
+access through Tailscale and Nginx Proxy Manager behind Cloudflare DNS. A
+segmented OPNsense and VLAN design is written up but not built.
 
-**Critical Services:**
-- Jellyfin (family media streaming with hardware transcoding)
-- Immich (80k+ photos, ML-enabled backup)
-- Nginx Proxy Manager (reverse proxy with SSL)
-- Tailscale (remote access)
-- *arr stack (media automation)
+## Worth reading
 
-### Network
-- Current: TP-Link Deco mesh (192.168.1.0/24, single subnet)
-- Planned: OPNsense router/firewall with VLAN segmentation
-- Domain: example.com (Cloudflare DNS + proxy)
-- External access: Tailscale (primary), NPM with SSL (ports 80/443 forwarded)
+Three documents carry most of what was actually learned here.
+
+[Diagnosing Hardware by Comparison](docs/10-lessons-learned/diagnosing-hardware-by-comparison.md)
+is a retrospective on two faults that appeared in no log file. A cluster node
+dropped off the corosync ring about twenty times a day; seven plausible causes
+were eliminated by measurement before the real one turned up outside the
+machine entirely. The surviving theory was wrong, and the write-up says so.
+
+[Proxmox Backups](docs/04-proxmox/backups.md) covers backup target and method,
+how to verify an archive at three levels, a restore test performed against a
+live guest, and three layers of failure detection including a dead-man's switch
+for the case where the job silently stops running.
+
+[Upgrades and Kernel Pinning](docs/04-proxmox/upgrades-and-kernels.md) documents
+converging three nodes onto one kernel and the BIOS flash procedure that came
+out of it, including which firmware settings will strand a headless node if
+they are lost.
+
+## Documentation
+
+| Path | Contents |
+|------|----------|
+| `docs/01-architecture/` | High-level design and diagrams |
+| `docs/02-hardware/` | Host specifications and capabilities |
+| `docs/03-truenas/` | Storage configuration and service inventory |
+| `docs/04-proxmox/` | Cluster setup, networking, backups, upgrades |
+| `docs/06-networking/` | Current network and the planned VLAN design |
+| `docs/07-migration/` | Service migration strategy between hosts |
+| `docs/10-lessons-learned/` | Retrospectives |
+| `decisions/` | Architecture Decision Records |
+| `scripts/` | Helper scripts |
+
+Folder numbers are deliberately non-contiguous. Gaps are reserved for
+categories that do not exist yet, so existing paths never have to be renumbered.
+
+## Roadmap
+
+Done:
+
+- Proxmox installed and grown to a three-node cluster
+- First VMs and LXC guests deployed
+- Nightly `vzdump` backups to TrueNAS over NFS, with a verified restore
+- Layered backup failure alerting
+- Cluster converged onto a single kernel; firmware brought current
+
+Next:
+
+- Proxmox storage integration with TrueNAS over iSCSI and NFS, replacing
+  node-local LVM-thin
+- VM templates with cloud-init
+- Migrate further services off TrueNAS onto the idle cluster capacity
+- Single-node k3s, then multi-node, then GitOps
+- OPNsense and the VLAN design in `docs/06-networking/vlan-design.md`
+- Deploy the Raspberry Pi nodes, which are bought but still in a drawer
 
 ## Goals
 
-### Learning Objectives (Priority Order)
-1. **Linux Administration** - Deep systems knowledge, scripting, automation
-2. **Kubernetes** - Container orchestration, GitOps, cloud-native patterns
-3. **Networking** - VLANs, routing, firewalls, network segmentation
-4. **Security** - Hardening, monitoring, incident response
-5. **Infrastructure as Code** - Terraform, Ansible, declarative infrastructure
+Linux administration first, then container orchestration, networking,
+security, and infrastructure as code. Working toward CompTIA Network+,
+Security+, and Linux+.
 
-### Certifications
-- CompTIA Network+
-- CompTIA Security+
-- CompTIA Linux+
+Typical pace is five to ten hours a week: an hour or two on weeknights for
+reading and small tasks, longer sessions at weekends for anything that risks
+taking a service down.
 
-### Technical Goals
-- Learn VM management and hypervisor operations
-- Deploy and manage production-ready Kubernetes cluster
-- Implement proper network segmentation with VLANs
-- Build CI/CD pipelines for homelab automation
-- Maintain high availability for family-critical services
+## Conventions
 
-## Project Roadmap
+**This repository is public.** Everything committed is sanitized: IPs as
+`192.168.x.x` or `10.0.x.x`, internal domains as `example.local`, external as
+`example.com`, hostnames generic but descriptive. No real domains, public IPs,
+LAN subnets, credentials, or tokens.
 
-### Phase 1: Foundation (Weeks 1-2)
-- [x] Install and configure Proxmox — grew to a 3-node cluster (`homelab`), not just the single Dell 3080 Micro originally planned
-- [ ] Integrate Proxmox storage with TrueNAS (iSCSI + NFS) — VMs currently use only node-local LVM-thin
-- [ ] Set up automated snapshots on TrueNAS
-- [x] Deploy first test VMs (Ubuntu 24.04 Desktop + Server, not Rocky Linux)
+A pre-commit hook (`scripts/check-sensitive.sh`) blocks commits containing
+secrets or identifying strings. Generic secret patterns live in the script;
+repository-specific literals live only in an untracked local file, so they are
+never published by the guard that exists to catch them. The hook does not
+travel with a clone. To install it:
 
-### Phase 2: VM Learning (Weeks 3-4)
-- [ ] Create VM templates with cloud-init
-- [ ] Practice snapshots, cloning, and backups — snapshots and backups exercised; VM cloning/templates still untouched
-- [ ] Deploy monitoring VM (Uptime Kuma or Grafana) — Uptime Kuma is running, but on TrueNAS/dockge, not as a Proxmox VM
-- [x] Experiment with LXC containers — `actualbudget` LXC running on Proxmox
+```bash
+cp scripts/check-sensitive.sh .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
 
-### Phase 3: Service Migration Experiments (Weeks 5-8)
-- [ ] Migrate 2-3 non-critical services to Proxmox — one LXC (actualbudget) migrated; two of three cluster nodes still have no workloads
-- [ ] Document performance differences
-- [x] Establish backup workflow to TrueNAS — nightly `vzdump` to a TrueNAS NFS dataset ([ADR-0006](decisions/0006-proxmox-backup-strategy.md), [runbook](docs/04-proxmox/backups.md))
-- [x] Test rollback procedures — restore verified end to end, incl. SQLite integrity check on restored data
+ADRs record decisions that had real trade-offs. They are immutable once
+accepted; a changed decision gets a new ADR and the old one is marked
+superseded, which is why [ADR-0101](decisions/0101-pve-node-acpi-workaround.md)
+still sits in the repository documenting a diagnosis that turned out to be
+wrong.
 
-### Phase 4: Kubernetes Foundation (Weeks 9-12)
-- [ ] Deploy single-node k3s cluster in VM
-- [ ] Configure TrueNAS NFS for persistent storage
-- [ ] Deploy first stateless applications
-- [ ] Set up kubectl and basic monitoring
-
-### Phase 5: Network Upgrade (Future)
-- [ ] Plan OPNsense migration strategy
-- [ ] Design VLAN architecture
-- [ ] Select managed switch and WiFi APs
-- [ ] Implement phased cutover
-
-### Phase 6: Advanced Patterns (Ongoing)
-- [ ] Multi-node k3s cluster
-- [ ] GitOps with FluxCD/ArgoCD
-- [ ] CI/CD runners in Kubernetes
-- [ ] Integrate Raspberry Pi nodes
-
-## Documentation Structure
-
-- **docs/01-architecture/** - High-level design decisions and diagrams
-- **docs/02-hardware/** - Hardware specifications and capabilities
-- **docs/03-truenas/** - Storage configuration and service management
-- **docs/04-proxmox/** - Virtualization platform setup and usage
-- **docs/05-kubernetes/** - Container orchestration and deployments
-- **docs/06-networking/** - Network design, VLANs, and security
-- **docs/07-migration/** - Service migration strategies and decisions
-- **docs/08-monitoring/** - Observability and alerting
-- **docs/09-security/** - Hardening, backups, and disaster recovery
-- **docs/10-lessons-learned/** - Journey journal and retrospectives
-- **configs/** - Sanitized configuration files
-- **scripts/** - Automation and helper scripts
-- **decisions/** - Architecture Decision Records (ADRs)
-
-## Quick Links
-
-- [Architecture Overview](docs/01-architecture/overview.md)
-- [Current Network Design](docs/06-networking/current-setup.md)
-- [Service Inventory](docs/03-truenas/current-services.md)
-- [Migration Strategy](docs/07-migration/migration-strategy.md)
-- [Proxmox Cluster Hardware](docs/02-hardware/proxmox-node.md)
-- [Proxmox Backups](docs/04-proxmox/backups.md)
-- [Upgrades and Kernel Pinning](docs/04-proxmox/upgrades-and-kernels.md)
-- [Diagnosing Hardware by Comparison](docs/10-lessons-learned/diagnosing-hardware-by-comparison.md)
-
-## Time Commitment
-
-**Typical weekly schedule:** 5-10 hours
-- Weeknight sessions: 1-2 hours for reading, planning, small tasks
-- Weekend deep-dives: 3-6 hours for major implementations
-
-**Learning style:** Deep-dive, hands-on experimentation with concept explanations
-
-## Repository Conventions
-
-### Sanitization
-- IP addresses: `192.168.X.X` or `10.0.X.X`
-- Domain names: `example.local` (internal), `example.com` (external)
-- Hostnames: Descriptive but generic (e.g., `truenas-01`, `pve-node-01`)
-
-### Git Workflow
-- Main branch: Stable, tested documentation
-- Feature branches: For major documentation additions
-- Commit messages: Descriptive (e.g., "Add Proxmox storage integration guide")
-
-### Code Blocks
-- Always specify language for syntax highlighting
-- Include comments explaining non-obvious configurations
-- Provide context for why choices were made
-
-## Contributing (Future)
-
-This repository is currently private for personal learning. May be made public in the future as a resource for others building similar homelabs.
-
-## License
-
-Personal documentation - all rights reserved (for now)
+Code blocks specify a language. Diagrams are Mermaid so they render and diff
+on GitHub. Configuration snippets explain why, not just what.

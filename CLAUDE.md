@@ -6,20 +6,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a personal documentation repository (Markdown only, no application code, no build/lint/test tooling) chronicling the user's homelab build-out: TrueNAS SCALE storage, Proxmox VE virtualization, a planned k3s cluster, and a planned OPNsense/VLAN network migration. The purpose is learning (toward CompTIA Network+, Security+, Linux+) and producing a reference others could later follow.
 
+Write only about what this homelab actually does. Generic tutorial content does not belong here: how a tool works in the abstract, vendor spec sheets, installation walkthroughs for things not yet built. Three such files were removed for exactly that reason. A doc should be unmistakably about this infrastructure, or it should not exist yet.
+
 ## Repository structure
 
 - `docs/01-architecture/` — high-level design decisions and diagrams (Mermaid)
 - `docs/02-hardware/` — hardware specs and capabilities per host
 - `docs/03-truenas/` — storage config and service management on TrueNAS
 - `docs/04-proxmox/` — Proxmox setup, networking, VM guides
-- `docs/05-kubernetes/` — k3s installation and cluster docs
 - `docs/06-networking/` — network design, VLANs, current setup
 - `docs/07-migration/` — service migration strategy between hosts
-- `docs/10-lessons-learned/` — journal/retrospective entries (e.g. `git-basics.md`)
+- `docs/10-lessons-learned/` — retrospectives on real troubleshooting sessions
 - `decisions/` — Architecture Decision Records (ADRs), numbered `NNNN-title.md`
 - `README.md` — project overview, roadmap, and the canonical statement of repository conventions
 
-Numbered `docs/` subfolders are referenced by number in the README's "Documentation Structure" section — if adding a new category, follow that numbering scheme (e.g. `08-monitoring`, `09-security` are reserved but not yet created).
+Numbered `docs/` subfolders are listed in the README's Documentation table. Numbering is deliberately non-contiguous: gaps are reserved for categories that do not exist yet (`05-kubernetes`, `08-monitoring`, `09-security`), so existing paths never need renumbering when one is added.
 
 ## Architecture Decision Records (ADRs)
 
