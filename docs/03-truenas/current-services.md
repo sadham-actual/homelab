@@ -247,7 +247,7 @@ Previously documented but not found in the current dataset/app inventory, likely
 
 ## Storage Summary
 
-- Pool `tank`: RAIDZ1, ~10.9TiB usable capacity, ~48% allocated (healthy, most recent scrub finished clean)
+- Pool `tank`: RAIDZ1, ~10.9TiB raw (~7.2TiB usable after parity), a little over 50% allocated (healthy, most recent scrub finished clean)
 - SMB shares: `photos` (`tank/photos`), `timemachine-user` (`tank/timemachine-user`, Time Machine backup target)
 - NFS shares: `media` (`tank/media`), `appdata` (`tank/appdata`)
 

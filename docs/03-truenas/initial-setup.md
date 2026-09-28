@@ -15,8 +15,8 @@ This document covers the initial setup and dataset organization for your TrueNAS
 
 **Software:**
 - OS: TrueNAS SCALE 25.10.1 "Goldeye"
-- Pool: tank (RAIDZ1, ~8TB usable)
-- Current Usage: ~6TB (75% full)
+- Pool: tank (RAIDZ1, ~7.2TiB usable)
+- Current Usage: a little over 50% allocated
 
 ## Storage Pool Architecture
 

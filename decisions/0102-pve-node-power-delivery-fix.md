@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-23
 
-**Status:** Accepted
+**Status:** Superseded by ADR-0103 (the root-cause finding stands; the planned node replacement was dropped in favor of OEM Dell adapters)
 
 **Supersedes:** ADR-0101
 

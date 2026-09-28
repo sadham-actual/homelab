@@ -81,6 +81,8 @@ That is how the `AcPwrRcvry` / `DeepSleepCtrl` drift above was found. Worth runn
 
 `pve-02` is currently powered by a dedicated 100W USB-C PD brick rather than the shared power rig used by the other two nodes (one upstream supply feeding 5x 65W USB-C PD trigger boards → USB-C-to-Dell-barrel adapters). The shared rig could not reliably deliver the current spike from bringing all 12 threads online, causing a boot crash-loop; the dedicated 100W brick resolved it. Full writeup: [ADR-0102](../../decisions/0102-pve-node-power-delivery-fix.md) (supersedes the earlier, incorrect ACPI-based diagnosis in [ADR-0101](../../decisions/0101-pve-node-acpi-workaround.md)).
 
+**Planned resolution:** [ADR-0103](../../decisions/0103-pve-node-oem-power.md) keeps all three nodes and retires the shared rig. Each node moves to its own genuine Dell AC adapter on the rack PDU, and `pve-02` gets a 90W one. This replaces ADR-0102's plan to swap the 3000 Micro for a third 3080.
+
 ### Recurrence 2026-09-03
 
 `pve-02` was at some point moved back onto the shared 65W rig, and the fault returned exactly as ADR-0102 predicted. Four consecutive boot attempts collapsed, with `journalctl --list-boots` recording four boots that **started and ended in the same second**, on both the newer kernel *and* the known-good fallback, confirming the failure is power, not software. A 100W adapter booted it first try. Cost: 7 additional unsafe shutdowns.
@@ -146,7 +148,7 @@ Held 3500 MHz all-core throughout, 74°C, no throttling, no brownout.
 | PL2 burst | 68 W | **77 W** |
 | **Platform idle** | **5.3 W** | **21.8 W** |
 
-The 12th-gen part idles ~16W higher; adding the same ~50W dynamic load puts it near **72W** against a 65W supply, with a PL2 ceiling 9W above it. This quantitatively confirms ADR-0102's planned resolution: replace the 3000 Micro with a matching 3080 Micro rather than redesigning the power rig.
+The 12th-gen part idles ~16W higher; adding the same ~50W dynamic load puts it near **72W** against a 65W supply, with a PL2 ceiling 9W above it. This is why the 3000 Micro needs a 90W supply, not a 65W one. [ADR-0103](../../decisions/0103-pve-node-oem-power.md) provides it with a genuine Dell 90W adapter instead of replacing the node, as ADR-0102 had planned.
 
 **Two caveats on that 14% margin:** `psys` is the CPU's own estimate and excludes PD-board conversion losses, so real draw at the barrel is somewhat higher. And **boot transients cannot be reproduced from inside a running OS**, and that is the regime that actually kills the 3000 Micro. The 3080s are proven empirically across many clean boots, so this is not a concern for them, but the stress test validates *running* load, not *starting* load.
 
@@ -167,7 +169,7 @@ A cluster-wide NFS storage `pvebackup` **is** now attached, pointing at a TrueNA
 
 ### VM CPU type and live migration
 
-`docker-1` runs `cpu: host`. While the cluster contains mixed CPU generations (10th-gen and 12th-gen), that setting **blocks live migration** between them. Either standardise the hardware (the planned 3080 swap) or set a common baseline both generations support:
+`docker-1` runs `cpu: host`. While the cluster contains mixed CPU generations (10th-gen and 12th-gen), that setting **blocks live migration** between them. The 3000 Micro is staying ([ADR-0103](../../decisions/0103-pve-node-oem-power.md)), so the hardware will not be standardised. Set a common baseline both generations support on any guest that needs to migrate:
 
 ```bash
 qm set 101 --cpu x86-64-v3    # both Comet Lake and Alder Lake support AVX2

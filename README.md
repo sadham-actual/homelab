@@ -17,9 +17,10 @@ hardware transcoding, Immich over 80k photos, Nginx Proxy Manager, Pi-hole,
 Tailscale, and a local Ollama and Open WebUI stack on an RTX 3060.
 
 **Proxmox VE cluster** across three Dell OptiPlex Micro nodes: two 3080 Micros
-(i5-10500T, 16GB) and one 3000 Micro (i5-12500T, 32GB) that is slated for
-replacement after a power delivery fault documented in
-[ADR-0102](decisions/0102-pve-node-power-delivery-fix.md). Guests are a Docker
+(i5-10500T, 16GB) and one 3000 Micro (i5-12500T, 32GB). A power delivery
+fault on that node ([ADR-0102](decisions/0102-pve-node-power-delivery-fix.md))
+is being closed by moving every node from a shared custom supply onto its own
+Dell adapter ([ADR-0103](decisions/0103-pve-node-oem-power.md)). Guests are a Docker
 host VM and an Actual Budget LXC, backed up nightly to TrueNAS over NFS. Most
 cluster capacity is still idle.
 

@@ -271,7 +271,7 @@ See [decisions/](../../decisions/) folder for Architecture Decision Records (ADR
 ## Scalability
 
 ### Current Capacity
-- **Storage:** ~10.9TiB usable (RAIDZ1), ~48% allocated
+- **Storage:** ~7.2TiB usable (RAIDZ1, ~10.9TiB raw), a little over 50% allocated
 - **Compute:** TrueNAS handles current Docker/App load; Proxmox cluster exists but is mostly idle (2 of 3 nodes have no workloads)
 - **Network:** 500Mbps internet, 2.5Gb internal backbone sufficient for now
 

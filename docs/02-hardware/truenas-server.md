@@ -179,8 +179,9 @@ modular cables across PSU models.
 
 #### Data Pool: "tank"
 - **Config:** 3x 4TB SATA HDD in RAIDZ1
-- **Usable Capacity:** ~8TB
-- **Current Usage:** ~6TB (75% full)
+- **Usable Capacity:** ~7.2TiB (`zpool list` reports ~10.9TiB, but that `SIZE` is raw capacity including parity)
+- **Current Usage:** a little over 50% allocated
+- **Second copy:** none yet. Snapshots live on this pool only, and so do the Proxmox `vzdump` backups, so losing the pool loses both
 - **Redundancy:** Single drive failure tolerance
 - **Performance:** Sequential reads ~300-400 MB/s
 
@@ -290,7 +291,8 @@ backplane) becomes mandatory at that scale, not optional.
 1. **Set static IP** instead of DHCP
 2. **Configure automated snapshots** (critical before major changes)
 3. **Add UPS** for clean shutdowns
-4. **Monitor pool capacity** - approaching 80% full
+4. **Monitor pool capacity** - a little over 50% today; plan expansion before 75-80%
+5. **Replicate irreplaceable datasets off this pool** (photos, configs, Proxmox backups); no second copy exists yet
 
 ### Medium-Term (6-12 months)
 1. **Add second NIC** for storage VLAN
